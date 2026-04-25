@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>E-Dream · Tính lợi nhuận Shopee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: #FAFAF7;
+    color: #1A1A1A;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "cv11";
+    text-rendering: optimizeLegibility;
+  }
+  button { font-family: inherit; }
+  a { color: inherit; }
+  ::selection { background: #F5B81C; color: #1A1A1A; }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 0 24px 40px; }
+
+  @media (max-width: 700px) {
+    .container { padding: 0 16px 24px; }
+    .input-row, .fee-grid, .charts-grid {
+      grid-template-columns: 1fr !important;
+    }
+    h1 { font-size: 28px !important; }
+  }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="app.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="result.jsx"></script>
+<script type="text/babel" src="charts.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+
+<script type="text/babel">
+const { useState, useMemo, useEffect } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentColor": "#F5B81C",
+  "successColor": "#1D9E75",
+  "background": "#FAFAF7",
+  "fontFamily": "Inter",
+  "showRecommendation": true,
+  "showCharts": true,
+  "heroStyle": "gradient",
+  "resultEmphasis": "big-number"
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tw, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  const [mode, setMode] = useState('forward');
+  const [costPrice, setCostPrice] = useState(200000);
+  const [sellPrice, setSellPrice] = useState(400000);
+  const [productName, setProductName] = useState('');
+  const [shopType, setShopType] = useState('mall');
+  const [category, setCategory] = useState('fashion');
+
+  const [fixedFees, setFixedFees] = useState(DEFAULT_FIXED_FEES);
+  const [varFees, setVarFees] = useState(DEFAULT_VAR_FEES);
+
+  // Apply category to fixed-fee rate
+  useEffect(() => {
+    const cat = CATEGORIES.find(c => c.id === category);
+    if (!cat) return;
+    setFixedFees(prev => prev.map(f =>
+      f.id === 'fixed' ? { ...f, rate: cat.adj, hint: `${(cat.adj * 100).toString().replace('.', ',')}% theo ngành ${cat.name}` } : f
+    ));
+  }, [category]);
+
+  const revenue = sellPrice;
+  const fixedTotal = useMemo(() =>
+    fixedFees.reduce((s, f) => s + computeFee(f, revenue), 0),
+    [fixedFees, revenue]);
+  const varTotal = useMemo(() =>
+    varFees.reduce((s, f) => s + computeFee(f, revenue), 0),
+    [varFees, revenue]);
+  const totalCost = costPrice + fixedTotal + varTotal;
+  const profit = revenue - totalCost;
+  const profitPct = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+  const onReset = () => {
+    setFixedFees(DEFAULT_FIXED_FEES);
+    setVarFees(DEFAULT_VAR_FEES);
+  };
+
+  // Apply theme
+  useEffect(() => {
+    document.body.style.background = tw.background;
+    document.body.style.fontFamily = `'${tw.fontFamily}', ui-sans-serif, system-ui, sans-serif`;
+  }, [tw.background, tw.fontFamily]);
+
+  return (
+    <div style={{ minHeight: '100vh', background: tw.background }}>
+      <TopNav />
+      <div className="container">
+        <Hero mode={mode} setMode={setMode} />
+
+        {/* Primary input card */}
+        <div style={{
+          background: '#fff', borderRadius: 16, border: '1px solid #EFEAE0',
+          padding: 32,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.04)',
+          marginBottom: 20,
+        }}>
+          <div className="input-row" style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20,
+          }}>
+            <MoneyInput
+              label={mode === 'forward' ? 'Giá vốn' : 'Giá vốn'}
+              value={costPrice}
+              onChange={setCostPrice}
+              hint="Giá bạn nhập về / sản xuất sản phẩm"
+              autoFocus
+            />
+            <MoneyInput
+              label={mode === 'forward' ? 'Giá bán' : 'Lợi nhuận mong muốn'}
+              value={sellPrice}
+              onChange={setSellPrice}
+              hint={mode === 'forward' ? 'Giá niêm yết trên Shopee' : 'Hệ thống sẽ gợi ý giá bán'}
+            />
+          </div>
+
+          <div style={{
+            marginTop: 22, paddingTop: 22, borderTop: '1px solid #F5F2EA',
+            display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap',
+          }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <label style={{
+                display: 'block', fontSize: 12, fontWeight: 500,
+                color: '#6B6B66', marginBottom: 8,
+              }}>
+                Tên sản phẩm <span style={{ color: '#A8A89E', fontWeight: 400 }}>(để lưu lại sau)</span>
+              </label>
+              <input
+                type="text"
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="VD: Áo thun nam mùa hè"
+                style={{
+                  width: '100%', padding: '11px 14px', borderRadius: 8,
+                  border: '1px solid #EFEAE0', background: '#FAFAF7',
+                  fontSize: 14, color: '#1A1A1A', outline: 'none',
+                  fontFamily: 'inherit',
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="input-row" style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16,
+          }}>
+            <Select
+              label="Loại shop"
+              value={shopType}
+              options={[
+                { id: 'mall', label: 'Shop Mall' },
+                { id: 'normal', label: 'Shop thường' },
+              ]}
+              onChange={setShopType}
+              leftIcon={<Icon name="store" size={14} color="#C99A0E" />}
+            />
+            <Select
+              label="Ngành hàng"
+              value={category}
+              options={CATEGORIES.map(c => ({
+                id: c.id,
+                label: `${c.name} (${(c.adj * 100).toString().replace('.', ',')}%)`,
+              }))}
+              onChange={setCategory}
+            />
+          </div>
+        </div>
+
+        <ResultCard
+          revenue={revenue}
+          totalCost={totalCost}
+          profit={profit}
+          profitPct={profitPct}
+          onSave={() => {}}
+        />
+
+        <FeeBreakdown
+          fixedFees={fixedFees} varFees={varFees}
+          setFixedFees={setFixedFees} setVarFees={setVarFees}
+          revenue={revenue}
+          onReset={onReset}
+        />
+
+        {tw.showCharts && (
+          <ChartsSection
+            revenue={revenue} costPrice={costPrice}
+            fixedFees={fixedFees} varFees={varFees}
+            profit={profit}
+          />
+        )}
+
+        {tw.showRecommendation && (
+          <RecommendationCard
+            profit={profit} profitPct={profitPct}
+            fixedFees={fixedFees} revenue={revenue}
+            onTry={() => {}}
+          />
+        )}
+
+        <Footer />
+      </div>
+
+      <TweaksPanel>
+        <TweakSection label="Theme" />
+        <TweakColor label="Accent (gold)" value={tw.accentColor}
+          onChange={v => setTweak('accentColor', v)} />
+        <TweakColor label="Success" value={tw.successColor}
+          onChange={v => setTweak('successColor', v)} />
+        <TweakColor label="Background" value={tw.background}
+          onChange={v => setTweak('background', v)} />
+
+        <TweakSection label="Typography" />
+        <TweakSelect label="Font" value={tw.fontFamily}
+          options={['Inter', 'system-ui', 'Helvetica Neue', 'Geist', 'IBM Plex Sans']}
+          onChange={v => setTweak('fontFamily', v)} />
+
+        <TweakSection label="Sections" />
+        <TweakToggle label="Hiện biểu đồ" value={tw.showCharts}
+          onChange={v => setTweak('showCharts', v)} />
+        <TweakToggle label="Hiện gợi ý E-Dream" value={tw.showRecommendation}
+          onChange={v => setTweak('showRecommendation', v)} />
+
+        <TweakSection label="Quick states" />
+        <TweakButton label="Demo: Lãi tốt" onClick={() => { setCostPrice(150000); setSellPrice(400000); }} />
+        <TweakButton label="Demo: Hòa vốn" onClick={() => { setCostPrice(240000); setSellPrice(400000); }} />
+        <TweakButton label="Demo: Đang lỗ" onClick={() => { setCostPrice(380000); setSellPrice(400000); }} />
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
