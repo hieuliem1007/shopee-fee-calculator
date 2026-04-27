@@ -6,7 +6,7 @@
 // - Loại bỏ getDefaultFeatures() cũ (logic đã chuyển vào DB function)
 
 import { supabase } from './supabase'
-import type { Profile, ProfileStatus } from './supabase'
+import type { Profile, ProfileStatus, Feature } from './supabase'
 
 
 // ── Activity log type ───────────────────────────────────────────
@@ -17,6 +17,14 @@ export interface ActivityLogEntry {
   feature_id: string | null
   metadata: Record<string, unknown> | null
   created_at: string
+}
+
+// ── User feature row type ───────────────────────────────────────
+export interface UserFeature {
+  user_id: string
+  feature_id: string
+  granted_at: string
+  granted_by: string | null
 }
 
 
@@ -79,6 +87,18 @@ function mapErrorMessage(error: { code?: string; message?: string } | null): str
       }
       if (error.message?.includes('Invalid feature ids')) {
         return 'Có quyền không tồn tại trong hệ thống'
+      }
+      if (error.message?.includes('Only admin')) {
+        return 'Chỉ admin mới có quyền quản lý features'
+      }
+      if (error.message?.includes('User not found')) {
+        return 'Không tìm thấy user'
+      }
+      if (error.message?.includes('Cannot manage admin')) {
+        return 'Không thể quản lý features của admin'
+      }
+      if (error.message?.includes('Invalid features:')) {
+        return 'Có feature không hợp lệ'
       }
       return error.message || 'Lỗi không xác định'
     default:
@@ -272,6 +292,46 @@ export async function updateUserProfileAdmin(
   const { error } = await supabase.rpc('update_user_profile_admin', params)
   if (error) return { error: mapErrorMessage(error) }
   return { error: null }
+}
+
+
+// ── Features management ─────────────────────────────────────────
+export async function listAllFeatures(): Promise<Feature[]> {
+  const { data, error } = await supabase
+    .from('features')
+    .select('*')
+    .order('level', { ascending: true })
+    .order('display_order', { ascending: true })
+  if (error) return []
+  return (data ?? []) as Feature[]
+}
+
+export async function getUserFeatures(userId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('user_features')
+    .select('feature_id')
+    .eq('user_id', userId)
+  if (error) return []
+  return (data ?? []).map(r => r.feature_id as string)
+}
+
+export interface SetUserFeaturesResult {
+  success: boolean
+  granted_count: number
+  revoked_count: number
+  total_features: number
+}
+
+export async function setUserFeatures(
+  userId: string,
+  featureIds: string[]
+): Promise<{ data: SetUserFeaturesResult | null; error: string | null }> {
+  const { data, error } = await supabase.rpc('set_user_features', {
+    p_user_id: userId,
+    p_feature_ids: featureIds,
+  })
+  if (error) return { data: null, error: mapErrorMessage(error) }
+  return { data: data as SetUserFeaturesResult, error: null }
 }
 
 
