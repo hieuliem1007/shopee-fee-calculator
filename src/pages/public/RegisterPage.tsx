@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { supabase } from '@/lib/supabase'
-import { Eye, EyeOff, Loader2, CheckCircle } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 const schema = z.object({
   full_name: z.string().min(2, 'Vui lòng nhập họ tên (ít nhất 2 ký tự)'),
@@ -33,7 +33,6 @@ export function RegisterPage() {
   const navigate = useNavigate()
   const [showPw, setShowPw] = useState(false)
   const [serverError, setServerError] = useState('')
-  const [done, setDone] = useState(false)
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -43,10 +42,15 @@ export function RegisterPage() {
   const onSubmit = async (data: FormData) => {
     setServerError('')
 
-    // 1. Create auth user
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+    const { error: signUpError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
+      options: {
+        data: {
+          full_name: data.full_name,
+          phone: data.phone,
+        },
+      },
     })
 
     if (signUpError) {
@@ -58,77 +62,8 @@ export function RegisterPage() {
       return
     }
 
-    const userId = authData.user?.id
-    if (!userId) { setServerError('Đã có lỗi xảy ra. Vui lòng thử lại.'); return }
-
-    // 2. Create profile with status='pending'
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: userId,
-      full_name: data.full_name,
-      phone: data.phone,
-      email: data.email,
-      status: 'pending',
-    })
-
-    if (profileError) {
-      // Profile already exists edge case
-      if (!profileError.message.includes('duplicate')) {
-        setServerError('Không thể tạo hồ sơ: ' + profileError.message)
-        return
-      }
-    }
-
-    setDone(true)
-  }
-
-  if (done) {
-    return (
-      <div style={{ width: '100%', maxWidth: 420 }}>
-        <div style={{
-          background: '#fff', border: '1px solid #EFEAE0', borderRadius: 16,
-          padding: '36px 32px', textAlign: 'center',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05)',
-        }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: '50%',
-            background: '#E1F5EE', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', margin: '0 auto 16px',
-          }}>
-            <CheckCircle size={28} color="#1D9E75" />
-          </div>
-          <div style={{ fontSize: 20, fontWeight: 600, color: '#1A1A1A', marginBottom: 8 }}>
-            Đăng ký thành công!
-          </div>
-          <div style={{ fontSize: 14, color: '#6B6B66', lineHeight: 1.6, marginBottom: 24 }}>
-            Yêu cầu của bạn đã được tiếp nhận. Vui lòng liên hệ qua Zalo để được tư vấn
-            và kích hoạt tài khoản.
-          </div>
-          <a
-            href="https://zalo.me/0000000000"
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '11px 24px', borderRadius: 8,
-              background: '#F5B81C', color: '#1A1A1A',
-              border: 'none', fontSize: 14, fontWeight: 600,
-              textDecoration: 'none', cursor: 'pointer',
-              boxShadow: '0 1px 0 rgba(255,255,255,0.4) inset, 0 2px 6px rgba(245,184,28,0.3)',
-            }}
-          >
-            Liên hệ qua Zalo
-          </a>
-          <div style={{ marginTop: 16 }}>
-            <button onClick={() => navigate('/locked')} style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 13, color: '#6B6B66', fontFamily: 'inherit',
-            }}>
-              Hoặc xem trạng thái tài khoản →
-            </button>
-          </div>
-        </div>
-      </div>
-    )
+    // Trigger on Supabase will auto-create profile from metadata
+    navigate('/locked', { replace: true })
   }
 
   return (
