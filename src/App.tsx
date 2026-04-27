@@ -19,6 +19,7 @@ import { DashboardPage } from './pages/app/DashboardPage'
 
 // Admin pages
 import { PendingUsersPage } from './pages/admin/PendingUsersPage'
+import { UserListPage } from './pages/admin/UserListPage'
 
 // Original calculator (kept at /app/shopee-calculator)
 import CalculatorApp from './CalculatorApp'
@@ -46,7 +47,8 @@ export default function App() {
 
           {/* Admin — requires is_admin */}
           <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
-            <Route path="/admin" element={<Navigate to="/admin/users/pending" replace />} />
+            <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+            <Route path="/admin/users" element={<UserListPage />} />
             <Route path="/admin/users/pending" element={<PendingUsersPage />} />
           </Route>
 

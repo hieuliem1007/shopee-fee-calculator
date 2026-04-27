@@ -11,7 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // ── Database row types (manual — matches PLAN.md schema) ──────────
 
-export type ProfileStatus = 'pending' | 'active' | 'rejected' | 'suspended'
+export type ProfileStatus = 'pending' | 'active' | 'rejected' | 'suspended' | 'deleted'
 
 export interface Profile {
   id: string
