@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name text NOT NULL,
   phone text NOT NULL,
   email text NOT NULL UNIQUE,
-  status text NOT NULL DEFAULT 'pending' 
-    CHECK (status IN ('pending', 'active', 'rejected', 'suspended')),
+  status text NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'active', 'rejected', 'suspended', 'deleted')),
   rejected_reason text,
   suspended_reason text,
   package_label text,
