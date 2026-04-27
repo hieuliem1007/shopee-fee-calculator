@@ -1,123 +1,60 @@
-import { useState } from 'react'
-import { TopNav } from './components/layout/TopNav'
-import { Footer } from './components/layout/Footer'
-import { StickyBar } from './components/layout/StickyBar'
-import { SectionHeader } from './components/layout/SectionHeader'
-import { Hero } from './components/calculator/Hero'
-import { InputCard } from './components/calculator/InputCard'
-import { ResultCard } from './components/calculator/ResultCard'
-import { FeePanel } from './components/calculator/FeePanel'
-import { CalcFlow } from './components/calculator/CalcFlow'
-import { DualDonuts, TopFeesBar, RecommendationCard } from './components/calculator/Charts'
-import { ScenariosSection } from './components/calculator/Scenarios'
-import { useFeeCalculator } from './hooks/useFeeCalculator'
-import { RefreshCw } from 'lucide-react'
-import type { Scenario } from './types/fees'
-import type { ScData } from './components/calculator/Scenarios'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import { ProtectedRoute, AdminRoute, GuestRoute } from './routes/ProtectedRoute'
+
+// Layouts
+import { PublicLayout } from './components/layouts/PublicLayout'
+import { AppLayout } from './components/layouts/AppLayout'
+import { AdminLayout } from './components/layouts/AdminLayout'
+
+// Public pages
+import { LoginPage } from './pages/public/LoginPage'
+import { RegisterPage } from './pages/public/RegisterPage'
+
+// Locked
+import { LockedPage } from './pages/locked/LockedPage'
+
+// App pages
+import { DashboardPage } from './pages/app/DashboardPage'
+
+// Admin pages
+import { PendingUsersPage } from './pages/admin/PendingUsersPage'
+
+// Original calculator (kept at /app/shopee-calculator)
+import CalculatorApp from './CalculatorApp'
 
 export default function App() {
-  const calc = useFeeCalculator()
-  const [scenarios, setScenarios] = useState<Scenario[]>([])
-
-  const handleApplyScenario = (s: ScData) => {
-    calc.applySnapshot(s.snapshot)
-  }
-
   return (
-    <div style={{ minHeight: '100vh', background: '#FAFAF7' }}>
-      <TopNav />
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          {/* Public — redirect to app if already logged in */}
+          <Route element={<PublicLayout />}>
+            <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+            <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+            <Route path="/forgot-password" element={<div style={{ textAlign: 'center', color: '#6B6B66', fontSize: 14 }}>Tính năng đang phát triển. Liên hệ admin để reset mật khẩu.</div>} />
+          </Route>
 
-      <div className="container">
-        <Hero mode={calc.mode} setMode={calc.setMode} />
+          {/* Locked — accessible when logged in but not active */}
+          <Route path="/locked" element={<LockedPage />} />
 
-        <InputCard
-          costPrice={calc.costPrice} setCostPrice={calc.setCostPrice}
-          sellPrice={calc.sellPrice} setSellPrice={calc.setSellPrice}
-          productName={calc.productName} setProductName={calc.setProductName}
-          shopType={calc.shopType} setShopType={calc.setShopType}
-          category={calc.category} setCategory={calc.setCategory}
-          taxMode={calc.taxMode} setTaxMode={calc.setTaxMode}
-        />
+          {/* App — requires active user */}
+          <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+            <Route path="/app" element={<DashboardPage />} />
+            <Route path="/app/shopee-calculator" element={<CalculatorApp />} />
+          </Route>
 
-        <ResultCard
-          revenue={calc.revenue}
-          costPrice={calc.costPrice}
-          feeTotal={calc.feeTotal}
-          profit={calc.profit}
-          profitPct={calc.profitPct}
-          fixedFees={calc.fixedFees}
-          varFees={calc.varFees}
-          onSave={() => {}}
-        />
+          {/* Admin — requires is_admin */}
+          <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
+            <Route path="/admin" element={<Navigate to="/admin/users/pending" replace />} />
+            <Route path="/admin/users/pending" element={<PendingUsersPage />} />
+          </Route>
 
-        <section style={{ marginTop: 28 }}>
-          <SectionHeader
-            title="Bảng phí chi tiết"
-            subtitle="Bật/tắt từng khoản, dòng tiền sẽ cập nhật ngay tức thì."
-            right={
-              <button onClick={calc.reset} style={{
-                background: 'transparent', border: 0, padding: '6px 0',
-                color: '#6B6B66', fontSize: 13, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
-              }}>
-                <RefreshCw size={13} /> Reset về mặc định
-              </button>
-            }
-          />
-          <div className="col-3" style={{ marginTop: 16 }}>
-            <FeePanel
-              title="Chi phí cố định"
-              fees={calc.fixedFees} setFees={calc.setFixedFees}
-              revenue={calc.revenue}
-              color="#F5B81C" accentBg="#FAF6E8"
-            />
-            <CalcFlow
-              revenue={calc.revenue} costPrice={calc.costPrice}
-              fixedTotal={calc.fixedTotal} varTotal={calc.varTotal}
-              profit={calc.profit}
-            />
-            <FeePanel
-              title="Chi phí biến đổi"
-              fees={calc.varFees} setFees={calc.setVarFees}
-              revenue={calc.revenue}
-              color="#3B82C4" accentBg="#EAF2FB"
-            />
-          </div>
-        </section>
-
-        <section style={{ marginTop: 28 }}>
-          <SectionHeader
-            title="Phân tích trực quan"
-            subtitle="Cấu trúc doanh thu và phân rã chi phí — biết khoản nào ngốn lợi nhuận."
-          />
-          <div style={{ marginTop: 16 }}>
-            <DualDonuts
-              revenue={calc.revenue} costPrice={calc.costPrice}
-              fixedFees={calc.fixedFees} varFees={calc.varFees}
-              profit={calc.profit}
-            />
-            <div style={{ marginTop: 16 }}>
-              <TopFeesBar fees={[...calc.fixedFees, ...calc.varFees]} revenue={calc.revenue} />
-            </div>
-          </div>
-        </section>
-
-        <RecommendationCard
-          profit={calc.profit} profitPct={calc.profitPct}
-          fixedFees={calc.fixedFees} revenue={calc.revenue}
-        />
-
-        <ScenariosSection
-          scenarios={scenarios}
-          setScenarios={setScenarios}
-          current={calc.currentSnapshot}
-          onApply={handleApplyScenario}
-        />
-
-        <Footer />
-      </div>
-
-      <StickyBar profit={calc.profit} profitPct={calc.profitPct} onSave={() => {}} />
-    </div>
+          {/* Root — redirect based on auth state handled by GuestRoute logic */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }

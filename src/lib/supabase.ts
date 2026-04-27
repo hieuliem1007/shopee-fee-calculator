@@ -1,35 +1,53 @@
-// Supabase client — configure with your project URL + anon key
-// Add to .env.local:
-//   VITE_SUPABASE_URL=https://your-project.supabase.co
-//   VITE_SUPABASE_ANON_KEY=your-anon-key
+import { createClient } from '@supabase/supabase-js'
 
-// Uncomment after: npm install @supabase/supabase-js
-// import { createClient } from '@supabase/supabase-js'
-// import type { Database } from './supabase-types'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
-// const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-// const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY')
+}
 
-// export const supabase = createClient<Database>(supabaseUrl, supabaseKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// ── Database types (generated from supabase gen types) ────────────
-// Run: npx supabase gen types typescript --project-id <id> > src/lib/supabase-types.ts
-//
-// Expected schema:
-//
-// Table: calculations
-//   id          uuid PK
-//   user_id     uuid FK → auth.users
-//   name        text
-//   cost_price  integer
-//   sell_price  integer
-//   shop_type   text
-//   category    text
-//   tax_mode    text
-//   fixed_fees  jsonb
-//   var_fees    jsonb
-//   profit      integer
-//   profit_pct  numeric
-//   created_at  timestamptz
+// ── Database row types (manual — matches PLAN.md schema) ──────────
 
-export const SUPABASE_TODO = 'Install @supabase/supabase-js and uncomment the client above'
+export type ProfileStatus = 'pending' | 'active' | 'rejected' | 'suspended'
+
+export interface Profile {
+  id: string
+  full_name: string
+  phone: string
+  email: string
+  status: ProfileStatus
+  rejected_reason: string | null
+  suspended_reason: string | null
+  package_label: string | null
+  package_note: string | null
+  last_login_at: string | null
+  feature_usage_count: number
+  is_admin: boolean
+  created_at: string
+  updated_at: string
+  approved_at: string | null
+  approved_by: string | null
+}
+
+export interface Feature {
+  id: string
+  name: string
+  description: string | null
+  category: string
+  parent_feature_id: string | null
+  level: 1 | 2
+  display_order: number
+  is_default_for_new_user: boolean
+  created_at: string
+}
+
+export interface SystemConfig {
+  key: string
+  value: unknown
+  description: string | null
+  updated_at: string
+  updated_by: string | null
+}
