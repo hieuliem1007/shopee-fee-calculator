@@ -591,7 +591,9 @@ Tổng thời gian: **~1 tháng** (4 tuần × 5-7 buổi/tuần × 1-3 tiếng/
 
 ---
 
-### Phase 4 — Lưu kết quả + Dashboard + Share link (Tuần 4 đầu)
+### Phase 4 — Lưu kết quả + Dashboard + Share link (Tuần 4 đầu) — **STABLE** (28/04/2026, tag `phase-4-stable`)
+
+> Đã hoàn thành 5 milestones (4.1 DB → 4.2 Wire Save → 4.3 Dashboard → 4.4 Detail+Share → 4.5 Public+Audit) + 1 hotfix (Migration 019). Xem [docs/PHASE-4-COMPLETE.md](./docs/PHASE-4-COMPLETE.md) và [docs/LESSONS-LEARNED-PHASE-4.md](./docs/LESSONS-LEARNED-PHASE-4.md).
 
 **Mục tiêu:** User lưu được kết quả, xem lại trong dashboard, chia sẻ public.
 
