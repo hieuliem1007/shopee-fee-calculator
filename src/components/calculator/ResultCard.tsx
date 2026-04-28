@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Bookmark, Image, Download, Share2, Check, ArrowUp, ArrowDown } from 'lucide-react'
+import { Bookmark, Image, Download, Share2, ArrowUp, ArrowDown, Lock } from 'lucide-react'
 import { ProfitGauge } from './ProfitGauge'
 import { AlertBadges, computeAlerts } from './AlertBadges'
+import { SaveResultDialog } from './SaveResultDialog'
 import { fmtVND, fmtNum, fmtPct } from '@/lib/utils'
+import { useHasFeature } from '@/hooks/useHasFeature'
 import type { Fee } from '@/types/fees'
 
 interface Props {
@@ -13,7 +15,10 @@ interface Props {
   profitPct: number
   fixedFees: Fee[]
   varFees: Fee[]
-  onSave: () => void
+  productName: string
+  category: string
+  categoryLabel: string
+  onSaveSuccess?: (resultId: string) => void
 }
 
 const btnSec: React.CSSProperties = {
@@ -44,18 +49,38 @@ function Metric({ label, value, divider }: { label: string; value: string; divid
 
 export function ResultCard({
   revenue, costPrice, feeTotal, profit, profitPct,
-  fixedFees, varFees, onSave,
+  fixedFees, varFees,
+  productName, category, categoryLabel,
+  onSaveSuccess,
 }: Props) {
   const [hover, setHover] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const isProfit = profit >= 0
   const profitColor = isProfit ? '#1D9E75' : '#E24B4A'
 
   const alerts = computeAlerts({ revenue, profit, profitPct, fixedFees, varFees })
 
-  const handleSave = () => {
-    setSaved(true); onSave?.()
-    setTimeout(() => setSaved(false), 1800)
+  const { hasFeature: canSave, loading: featureLoading } = useHasFeature('shopee_save_result')
+
+  const feesSnapshot = [...fixedFees, ...varFees].map(f => ({
+    id: f.id,
+    label: f.name,
+    value: f.kind === 'pct' ? +(f.rate * 100).toFixed(4) : f.rate,
+    unit: f.kind === 'pct' ? 'percent' : 'vnd',
+    on: f.on,
+    custom: f.custom ?? false,
+  }))
+
+  const inputs = {
+    costPrice, sellPrice: revenue,
+    category, categoryLabel,
+  }
+
+  const results = { feeTotal, profit, profitPct, revenue }
+
+  const handleSaveClick = () => {
+    if (!canSave || featureLoading) return
+    setDialogOpen(true)
   }
 
   return (
@@ -144,22 +169,39 @@ export function ResultCard({
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
         gap: 10, marginTop: 24,
       }}>
-        <button onClick={handleSave} style={{
-          padding: '12px 14px', borderRadius: 10,
-          background: saved ? '#1D9E75' : '#F5B81C',
-          color: saved ? '#fff' : '#1A1A1A',
-          border: 0, fontSize: 13, fontWeight: 600,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 6, transition: 'all 0.2s', fontFamily: 'inherit',
-          boxShadow: saved ? 'none' : '0 1px 0 rgba(255,255,255,0.4) inset, 0 2px 6px rgba(245,184,28,0.30)',
-        }}>
-          {saved ? <Check size={14} /> : <Bookmark size={14} />}
-          {saved ? 'Đã lưu' : 'Lưu kết quả'}
+        <button
+          onClick={handleSaveClick}
+          disabled={!canSave || featureLoading}
+          title={!canSave && !featureLoading ? 'Liên hệ admin để mở khóa tính năng lưu kết quả' : undefined}
+          style={{
+            padding: '12px 14px', borderRadius: 10,
+            background: canSave ? '#F5B81C' : '#E5E5E0',
+            color: canSave ? '#1A1A1A' : '#A8A89E',
+            border: 0, fontSize: 13, fontWeight: 600,
+            cursor: canSave && !featureLoading ? 'pointer' : 'not-allowed',
+            opacity: canSave ? 1 : 0.6,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 6, transition: 'all 0.2s', fontFamily: 'inherit',
+            boxShadow: canSave ? '0 1px 0 rgba(255,255,255,0.4) inset, 0 2px 6px rgba(245,184,28,0.30)' : 'none',
+          }}
+        >
+          {canSave ? <Bookmark size={14} /> : <Lock size={14} />}
+          Lưu kết quả
         </button>
         <button style={btnSec}><Image size={14} /> Tải ảnh</button>
         <button style={btnSec}><Download size={14} /> Xuất PDF</button>
         <button style={btnSec}><Share2 size={14} /> Chia sẻ</button>
       </div>
+
+      <SaveResultDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        defaultProductName={productName}
+        inputs={inputs}
+        feesSnapshot={feesSnapshot}
+        results={results}
+        onSaved={(id) => onSaveSuccess?.(id)}
+      />
 
       <style>{`
         @keyframes pulse {

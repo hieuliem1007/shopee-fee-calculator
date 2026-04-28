@@ -68,8 +68,17 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
     categories: dbFees.categories,
   })
   const [scenarios, setScenarios] = useState<Scenario[]>([])
+  const [toast, setToast] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
 
   const handleApplyScenario = (s: ScData) => calc.applySnapshot(s.snapshot)
+
+  const handleSaveSuccess = (_resultId: string) => {
+    setToast({ kind: 'success', message: 'Đã lưu kết quả. Xem trong Dashboard để tìm lại.' })
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  const currentCategory = calc.categories.find(c => c.id === calc.category)
+  const categoryLabel = currentCategory?.name ?? ''
 
   return (
     <div style={{ padding: '24px 28px 48px', maxWidth: 1200 }}>
@@ -91,7 +100,10 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
           feeTotal={calc.feeTotal} profit={calc.profit}
           profitPct={calc.profitPct}
           fixedFees={calc.fixedFees} varFees={calc.varFees}
-          onSave={() => {}}
+          productName={calc.productName}
+          category={calc.category}
+          categoryLabel={categoryLabel}
+          onSaveSuccess={handleSaveSuccess}
         />
       </div>
 
@@ -139,6 +151,20 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
       <ScenariosSection scenarios={scenarios} setScenarios={setScenarios}
         current={calc.currentSnapshot} onApply={handleApplyScenario}
         categories={calc.categories} />
+
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 24, right: 24, zIndex: 200,
+          padding: '12px 18px', borderRadius: 10,
+          background: toast.kind === 'success' ? '#DCFCE7' : '#FEE2E2',
+          color: toast.kind === 'success' ? '#166534' : '#991B1B',
+          border: `1px solid ${toast.kind === 'success' ? '#86EFAC' : '#FCA5A5'}`,
+          fontSize: 13, fontWeight: 500, maxWidth: 360,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+        }}>
+          {toast.message}
+        </div>
+      )}
     </div>
   )
 }
