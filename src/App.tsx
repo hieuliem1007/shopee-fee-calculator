@@ -23,6 +23,7 @@ import { PendingUsersPage } from './pages/admin/PendingUsersPage'
 import { UserListPage } from './pages/admin/UserListPage'
 import { UserDetailPage } from './pages/admin/UserDetailPage'
 import { UserPermissionsPage } from './pages/admin/UserPermissionsPage'
+import { AdminFeesPage } from './pages/admin/AdminFeesPage'
 
 // Original calculator (kept at /app/shopee-calculator)
 import CalculatorApp from './CalculatorApp'
@@ -56,6 +57,7 @@ export default function App() {
             <Route path="/admin/users/pending" element={<PendingUsersPage />} />
             <Route path="/admin/users/:id" element={<UserDetailPage />} />
             <Route path="/admin/users/:id/permissions" element={<UserPermissionsPage />} />
+            <Route path="/admin/fees" element={<AdminFeesPage />} />
           </Route>
 
           {/* Root — redirect based on auth state handled by GuestRoute logic */}
