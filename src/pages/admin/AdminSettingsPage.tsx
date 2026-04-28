@@ -187,7 +187,7 @@ export function AdminSettingsPage() {
 
   const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ type, message })
-    setTimeout(() => setToast(null), 3000)
+    setTimeout(() => setToast(null), 4000)
   }
 
   const load = async () => {

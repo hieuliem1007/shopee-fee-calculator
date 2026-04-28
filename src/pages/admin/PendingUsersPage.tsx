@@ -163,7 +163,7 @@ export function PendingUsersPage() {
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok })
-    setTimeout(() => setToast(null), 3000)
+    setTimeout(() => setToast(null), 4000)
   }
 
   const load = useCallback(async () => {

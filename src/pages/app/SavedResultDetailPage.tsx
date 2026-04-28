@@ -8,6 +8,7 @@ import { fmtVND, fmtPct } from '@/lib/utils'
 import { relativeTime, daysUntil, expiryLabel } from '@/lib/format'
 import { useHasFeature } from '@/hooks/useHasFeature'
 import { ShareLinkDialog } from '@/components/calculator/ShareLinkDialog'
+import { Toast, type ToastState } from '@/components/ui/Toast'
 
 interface FeeSnapshotItem {
   id: string
@@ -34,10 +35,9 @@ export function SavedResultDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const [toast, setToast] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
+  const [toast, setToast] = useState<ToastState | null>(null)
   const showToast = (kind: 'success' | 'error', message: string) => {
     setToast({ kind, message })
-    setTimeout(() => setToast(null), 3500)
   }
 
   const { hasFeature: canShare, loading: featureLoading } = useHasFeature('shopee_share_link')
@@ -248,19 +248,7 @@ export function SavedResultDetailPage() {
         />
       )}
 
-      {toast && (
-        <div style={{
-          position: 'fixed', top: 24, right: 24, zIndex: 200,
-          padding: '12px 18px', borderRadius: 10,
-          background: toast.kind === 'success' ? '#DCFCE7' : '#FEE2E2',
-          color: toast.kind === 'success' ? '#166534' : '#991B1B',
-          border: `1px solid ${toast.kind === 'success' ? '#86EFAC' : '#FCA5A5'}`,
-          fontSize: 13, fontWeight: 500, maxWidth: 360,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-        }}>
-          {toast.message}
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
