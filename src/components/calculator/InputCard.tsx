@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Store, ChevronDown, Check } from 'lucide-react'
-import { CATEGORIES } from '@/lib/fees'
 import { fmtNum, parseNum } from '@/lib/utils'
-import type { ShopType, TaxMode } from '@/types/fees'
+import type { ShopType, TaxMode, Category } from '@/types/fees'
 
 interface MoneyInputProps {
   label: string
@@ -118,14 +117,16 @@ interface Props {
   shopType: ShopType; setShopType: (v: ShopType) => void
   category: string; setCategory: (v: string) => void
   taxMode: TaxMode; setTaxMode: (v: TaxMode) => void
+  categories: Category[]
 }
 
 export function InputCard({
   costPrice, setCostPrice, sellPrice, setSellPrice,
   productName, setProductName,
   shopType, setShopType, category, setCategory, taxMode, setTaxMode,
+  categories,
 }: Props) {
-  const categoryOptions = CATEGORIES.map(c => {
+  const categoryOptions = categories.map(c => {
     const p = +(c.adj * 100).toFixed(2)
     const s = (p % 1 === 0 ? p.toFixed(0) : p.toString()).replace('.', ',')
     return { id: c.id, label: `${c.name} (${s}%)` }

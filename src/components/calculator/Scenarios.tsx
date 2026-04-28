@@ -2,11 +2,11 @@ import { useState, useEffect, useMemo } from 'react'
 import { Bookmark, LayoutGrid, X } from 'lucide-react'
 import { derive } from '@/lib/fees'
 import { fmtVND, fmtPct } from '@/lib/utils'
-import type { Scenario, CalculatorState, FeeSnapshot } from '@/types/fees'
-import { CATEGORIES } from '@/lib/fees'
+import type { Scenario, CalculatorState, FeeSnapshot, Category } from '@/types/fees'
 
 const SHOP_TYPE_LABEL: Record<string, string> = { mall: 'Shop Mall', normal: 'Shop thường' }
-const categoryLabel = (id: string) => CATEGORIES.find(x => x.id === id)?.name ?? id
+const makeCategoryLabel = (categories: Category[]) =>
+  (id: string) => categories.find(x => x.id === id)?.name ?? id
 const fmtTime = (ts: number) => {
   const d = new Date(ts)
   return `Lưu lúc ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
@@ -113,11 +113,12 @@ function ScenarioColHeader({ s, isBest, onRename, onRemove }: {
 
 type ScData = Scenario & ReturnType<typeof deriveFromSnapshot>
 
-function CompareTable({ data, bestId, onRename, onRemove, onApply }: {
+function CompareTable({ data, bestId, onRename, onRemove, onApply, categoryLabel }: {
   data: ScData[]; bestId: string | null
   onRename: (id: string, name: string) => void
   onRemove: (id: string) => void
   onApply: (s: ScData) => void
+  categoryLabel: (id: string) => string
 }) {
   const cols = data.length
   const labelW = 160
@@ -226,12 +227,13 @@ function CompareTable({ data, bestId, onRename, onRemove, onApply }: {
   )
 }
 
-function ScenarioCompareModal({ open, onClose, scenarios, bestId, onRename, onRemove, onApply }: {
+function ScenarioCompareModal({ open, onClose, scenarios, bestId, onRename, onRemove, onApply, categoryLabel }: {
   open: boolean; onClose: () => void
   scenarios: Scenario[]; bestId: string | null
   onRename: (id: string, name: string) => void
   onRemove: (id: string) => void
   onApply: (s: ScData) => void
+  categoryLabel: (id: string) => string
 }) {
   const [mounted, setMounted] = useState(false)
   const [visible, setVisible] = useState(false)
@@ -286,7 +288,7 @@ function ScenarioCompareModal({ open, onClose, scenarios, bestId, onRename, onRe
           </button>
         </div>
         <div style={{ flex: 1, marginTop: 16, overflowX: 'auto', overflowY: 'auto' }}>
-          <CompareTable data={data} bestId={bestId} onRename={onRename} onRemove={onRemove} onApply={onApply} />
+          <CompareTable data={data} bestId={bestId} onRename={onRename} onRemove={onRemove} onApply={onApply} categoryLabel={categoryLabel} />
         </div>
       </div>
     </div>
@@ -299,9 +301,11 @@ interface Props {
   setScenarios: (s: Scenario[]) => void
   current: CalculatorState
   onApply: (s: ScData) => void
+  categories: Category[]
 }
 
-export function ScenariosSection({ scenarios, setScenarios, current, onApply }: Props) {
+export function ScenariosSection({ scenarios, setScenarios, current, onApply, categories }: Props) {
+  const categoryLabel = useMemo(() => makeCategoryLabel(categories), [categories])
   const [modalOpen, setModalOpen] = useState(false)
   const max = 3
   const isFull = scenarios.length >= max
@@ -385,6 +389,7 @@ export function ScenariosSection({ scenarios, setScenarios, current, onApply }: 
         scenarios={scenarios} bestId={bestId}
         onRename={handleRename} onRemove={handleRemove}
         onApply={(s) => { onApply(s); setModalOpen(false) }}
+        categoryLabel={categoryLabel}
       />
     </section>
   )

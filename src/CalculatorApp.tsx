@@ -1,4 +1,5 @@
 // Original Shopee Fee Calculator UI — served at /app/shopee-calculator
+// Phase 3: data-driven (DB-backed). Per-session load.
 import { useState } from 'react'
 import { SectionHeader } from './components/layout/SectionHeader'
 import { Hero } from './components/calculator/Hero'
@@ -9,12 +10,63 @@ import { CalcFlow } from './components/calculator/CalcFlow'
 import { DualDonuts, TopFeesBar, RecommendationCard } from './components/calculator/Charts'
 import { ScenariosSection } from './components/calculator/Scenarios'
 import { useFeeCalculator } from './hooks/useFeeCalculator'
-import { RefreshCw } from 'lucide-react'
+import { useDbFees, type DbFeesState } from './lib/use-db-fees'
+import { RefreshCw, AlertCircle } from 'lucide-react'
 import type { Scenario } from './types/fees'
 import type { ScData } from './components/calculator/Scenarios'
 
 export default function CalculatorApp() {
-  const calc = useFeeCalculator()
+  const dbFees = useDbFees()
+
+  if (dbFees.loading) {
+    return (
+      <div style={{
+        padding: '24px 28px 48px', maxWidth: 1200,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: 320, fontSize: 14, color: '#6B6B66',
+      }}>
+        Đang tải dữ liệu phí...
+      </div>
+    )
+  }
+
+  if (dbFees.error) {
+    return (
+      <div style={{
+        padding: '24px 28px 48px', maxWidth: 720, margin: '40px auto',
+      }}>
+        <div style={{
+          background: '#fff', border: '1px solid #FCA5A5', borderRadius: 12,
+          padding: '20px 24px', display: 'flex', gap: 14, alignItems: 'flex-start',
+        }}>
+          <AlertCircle size={20} color="#A82928" style={{ flexShrink: 0, marginTop: 2 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A', marginBottom: 6 }}>
+              Không tải được dữ liệu phí
+            </div>
+            <div style={{ fontSize: 13, color: '#6B6B66', marginBottom: 14 }}>
+              {dbFees.error}
+            </div>
+            <button onClick={dbFees.reload} style={{
+              padding: '8px 16px', borderRadius: 8,
+              background: '#1A1A1A', color: '#fff', border: 'none',
+              fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+            }}>Tải lại</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return <CalculatorBody dbFees={dbFees} />
+}
+
+function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
+  const calc = useFeeCalculator({
+    fixedFees: dbFees.fixedFees,
+    varFees: dbFees.varFees,
+    categories: dbFees.categories,
+  })
   const [scenarios, setScenarios] = useState<Scenario[]>([])
 
   const handleApplyScenario = (s: ScData) => calc.applySnapshot(s.snapshot)
@@ -30,6 +82,7 @@ export default function CalculatorApp() {
         shopType={calc.shopType} setShopType={calc.setShopType}
         category={calc.category} setCategory={calc.setCategory}
         taxMode={calc.taxMode} setTaxMode={calc.setTaxMode}
+        categories={calc.categories}
       />
 
       <div style={{ marginTop: 16 }}>
@@ -84,7 +137,8 @@ export default function CalculatorApp() {
         fixedFees={calc.fixedFees} revenue={calc.revenue} />
 
       <ScenariosSection scenarios={scenarios} setScenarios={setScenarios}
-        current={calc.currentSnapshot} onApply={handleApplyScenario} />
+        current={calc.currentSnapshot} onApply={handleApplyScenario}
+        categories={calc.categories} />
     </div>
   )
 }

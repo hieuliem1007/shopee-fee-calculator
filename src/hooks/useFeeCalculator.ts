@@ -1,26 +1,42 @@
 import { useState, useEffect, useMemo } from 'react'
-import { DEFAULT_FIXED_FEES, DEFAULT_VAR_FEES, CATEGORIES, derive } from '@/lib/fees'
-import type { Fee, ShopType, TaxMode, CalcMode, CalculatorState } from '@/types/fees'
+import { derive, buildSyntheticFixedFee } from '@/lib/fees'
+import type { Fee, Category, ShopType, TaxMode, CalcMode, CalculatorState } from '@/types/fees'
 
-export function useFeeCalculator() {
+interface InitialData {
+  fixedFees: Fee[]      // DB-mapped shopee_fixed (không có 'fixed' synthetic)
+  varFees: Fee[]        // DB-mapped shopee_variable
+  categories: Category[]
+}
+
+// Synthetic 'fixed' fee xếp đầu fixedFees panel; rate = adj của ngành đang chọn.
+function withSyntheticFixed(dbFixed: Fee[], adj: number): Fee[] {
+  return [buildSyntheticFixedFee(adj), ...dbFixed]
+}
+
+export function useFeeCalculator(initial: InitialData) {
+  const defaultCategoryId = initial.categories[0]?.id ?? ''
+  const defaultAdj = initial.categories[0]?.adj ?? 0
+
   const [costPrice, setCostPrice] = useState(200000)
   const [sellPrice, setSellPrice] = useState(400000)
   const [productName, setProductName] = useState('')
   const [shopType, setShopType] = useState<ShopType>('mall')
-  const [category, setCategory] = useState('auto')
+  const [category, setCategory] = useState(defaultCategoryId)
   const [taxMode, setTaxMode] = useState<TaxMode>('hokd')
   const [mode, setMode] = useState<CalcMode>('forward')
-  const [fixedFees, setFixedFees] = useState<Fee[]>(DEFAULT_FIXED_FEES)
-  const [varFees, setVarFees] = useState<Fee[]>(DEFAULT_VAR_FEES)
+  const [fixedFees, setFixedFees] = useState<Fee[]>(() =>
+    withSyntheticFixed(initial.fixedFees, defaultAdj)
+  )
+  const [varFees, setVarFees] = useState<Fee[]>(initial.varFees)
 
-  // Auto-update fixed platform fee when category changes
+  // Auto-update synthetic 'fixed' rate khi đổi ngành hàng.
   useEffect(() => {
-    const cat = CATEGORIES.find(c => c.id === category)
+    const cat = initial.categories.find(c => c.id === category)
     if (!cat) return
     setFixedFees(prev => prev.map(f =>
       f.id === 'fixed' ? { ...f, rate: cat.adj } : f
     ))
-  }, [category])
+  }, [category, initial.categories])
 
   const derived = useMemo(
     () => derive(costPrice, sellPrice, fixedFees, varFees),
@@ -28,8 +44,9 @@ export function useFeeCalculator() {
   )
 
   const reset = () => {
-    setFixedFees(DEFAULT_FIXED_FEES)
-    setVarFees(DEFAULT_VAR_FEES)
+    const cat = initial.categories.find(c => c.id === category)
+    setFixedFees(withSyntheticFixed(initial.fixedFees, cat?.adj ?? defaultAdj))
+    setVarFees(initial.varFees)
   }
 
   const currentSnapshot: CalculatorState = {
@@ -50,7 +67,6 @@ export function useFeeCalculator() {
   }
 
   return {
-    // inputs
     costPrice, setCostPrice,
     sellPrice, setSellPrice,
     productName, setProductName,
@@ -60,9 +76,8 @@ export function useFeeCalculator() {
     mode, setMode,
     fixedFees, setFixedFees,
     varFees, setVarFees,
-    // derived
+    categories: initial.categories,
     ...derived,
-    // actions
     reset,
     currentSnapshot,
     applySnapshot,

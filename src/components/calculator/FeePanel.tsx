@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Check, Plus, Trash2 } from 'lucide-react'
-import { computeFee, FEE_EXPLAIN } from '@/lib/fees'
+import { computeFee } from '@/lib/fees'
 import { fmtVND, fmtNum, fmtPct } from '@/lib/utils'
 import type { Fee, FeeKind } from '@/types/fees'
 
@@ -213,7 +213,7 @@ function FeeRow({ fee, dim, amt, isLast, onToggle, onRate, onKind, onName, onRem
           fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
         }}>{dim ? '0đ' : fmtVND(amt)}</div>
         <div style={{ fontSize: 11, color: '#8A8A82', marginTop: 2, lineHeight: 1.4 }}>
-          {FEE_EXPLAIN[fee.id] || fee.hint}
+          {fee.hint}
         </div>
       </div>
       <Toggle on={fee.on} onChange={onToggle} />
