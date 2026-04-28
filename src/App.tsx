@@ -14,6 +14,9 @@ import { RegisterPage } from './pages/public/RegisterPage'
 // Locked
 import { LockedPage } from './pages/locked/LockedPage'
 
+// Public share
+import { PublicSharePage } from './pages/public/PublicSharePage'
+
 // Feature gate
 import { FeatureGate } from './components/FeatureGate'
 
@@ -47,6 +50,9 @@ export default function App() {
 
           {/* Locked — accessible when logged in but not active */}
           <Route path="/locked" element={<LockedPage />} />
+
+          {/* Public share — anon, no auth */}
+          <Route path="/share/:slug" element={<PublicSharePage />} />
 
           {/* App — requires active user */}
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
