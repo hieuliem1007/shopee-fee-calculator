@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Search, Plus, Eye, Trash2, X, Inbox, ChevronLeft, ChevronRight, Loader2,
 } from 'lucide-react'
@@ -11,6 +11,7 @@ const PAGE_SIZE = 20
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
@@ -22,6 +23,16 @@ export function DashboardPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null)
   const [toast, setToast] = useState<{ message: string; kind: 'success' | 'error' } | null>(null)
+
+  // Flash toast khi navigate tới /app với state.toast (vd: từ Detail page sau xóa)
+  useEffect(() => {
+    const flash = (location.state as { toast?: string } | null)?.toast
+    if (flash) {
+      setToast({ kind: 'success', message: flash })
+      setTimeout(() => setToast(null), 3500)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [location, navigate])
 
   // Debounce search input
   useEffect(() => {

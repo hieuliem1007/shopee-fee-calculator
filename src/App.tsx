@@ -20,6 +20,7 @@ import { FeatureGate } from './components/FeatureGate'
 // App pages
 import { DashboardPage } from './pages/app/DashboardPage'
 import { UserProfilePage } from './pages/app/UserProfilePage'
+import { SavedResultDetailPage } from './pages/app/SavedResultDetailPage'
 
 // Admin pages
 import { PendingUsersPage } from './pages/admin/PendingUsersPage'
@@ -51,6 +52,7 @@ export default function App() {
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/app" element={<DashboardPage />} />
             <Route path="/app/profile" element={<UserProfilePage />} />
+            <Route path="/app/saved/:id" element={<SavedResultDetailPage />} />
             <Route path="/app/shopee-calculator" element={
               <FeatureGate feature="shopee_calculator_access">
                 <CalculatorApp />
