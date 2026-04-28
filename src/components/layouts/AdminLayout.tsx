@@ -8,7 +8,7 @@ const NAV = [
   { path: '/admin/users', icon: Users, label: 'Tất cả user' },
   { path: '/admin/fees', icon: DollarSign, label: 'Cấu hình phí' },
   { path: '/admin/email-templates', icon: Mail, label: 'Email templates' },
-  { path: '/admin/system', icon: Settings, label: 'Cấu hình hệ thống' },
+  { path: '/admin/settings', icon: Settings, label: 'Cấu hình hệ thống' },
 ]
 
 export function AdminLayout() {
