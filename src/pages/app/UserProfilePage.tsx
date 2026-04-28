@@ -209,7 +209,12 @@ export function UserProfilePage() {
     const fn = form.full_name.trim()
     const ph = form.phone.trim()
     if (!fn) errs.full_name = 'Tên không được rỗng'
-    if (!ph) errs.phone = 'Số điện thoại không được rỗng'
+    if (fn.length > 100) errs.full_name = 'Tên tối đa 100 ký tự'
+    if (!ph) {
+      errs.phone = 'Số điện thoại không được rỗng'
+    } else if (!/^[0-9]{10,11}$/.test(ph.replace(/\s/g, ''))) {
+      errs.phone = 'Số điện thoại không hợp lệ (10-11 chữ số)'
+    }
     if (Object.keys(errs).length) {
       setErrors(errs)
       return
@@ -276,7 +281,10 @@ export function UserProfilePage() {
   return (
     <div style={{ padding: 32, maxWidth: 760 }}>
       <div style={{ marginBottom: 22 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, color: '#1A1A1A' }}>
+        <h1 style={{
+          margin: 0, fontSize: 22, fontWeight: 600, color: '#1A1A1A',
+          textTransform: 'uppercase', letterSpacing: '0.02em',
+        }}>
           Tài khoản của tôi
         </h1>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B6B66' }}>
@@ -330,7 +338,10 @@ export function UserProfilePage() {
           </div>
         </div>
 
-        <div style={{ marginTop: 6 }}>
+        <form
+          onSubmit={e => { e.preventDefault(); if (editMode) handleSave() }}
+          style={{ marginTop: 6 }}
+        >
           <FieldRow label="Họ tên">
             {editMode ? (
               <>
@@ -399,28 +410,28 @@ export function UserProfilePage() {
           <FieldRow label="Tham gia">
             {formatDate(profile.created_at)}
           </FieldRow>
-        </div>
 
-        {editMode && (
-          <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'flex-end' }}>
-            <button onClick={cancelEdit} disabled={saving} style={{
-              padding: '9px 18px', borderRadius: 8, border: '1px solid #EFEAE0',
-              background: '#fff', fontSize: 13, fontWeight: 500,
-              cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-            }}>Hủy</button>
-            <button onClick={handleSave} disabled={saving} style={{
-              padding: '9px 18px', borderRadius: 8, border: 'none',
-              background: '#1D9E75', color: '#fff', fontSize: 13, fontWeight: 600,
-              cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center', gap: 6, opacity: saving ? 0.7 : 1,
-            }}>
-              {saving
-                ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />
-                : <Save size={14} />}
-              Lưu thay đổi
-            </button>
-          </div>
-        )}
+          {editMode && (
+            <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={cancelEdit} disabled={saving} style={{
+                padding: '9px 18px', borderRadius: 8, border: '1px solid #EFEAE0',
+                background: '#fff', fontSize: 13, fontWeight: 500,
+                cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+              }}>Hủy</button>
+              <button type="submit" disabled={saving} style={{
+                padding: '9px 18px', borderRadius: 8, border: 'none',
+                background: '#1D9E75', color: '#fff', fontSize: 13, fontWeight: 600,
+                cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', gap: 6, opacity: saving ? 0.7 : 1,
+              }}>
+                {saving
+                  ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} />
+                  : <Save size={14} />}
+                Lưu thay đổi
+              </button>
+            </div>
+          )}
+        </form>
       </Card>
 
       {/* Section 2: Quyền của tôi */}
