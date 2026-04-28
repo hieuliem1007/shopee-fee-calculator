@@ -10,6 +10,8 @@ import { AdminLayout } from './components/layouts/AdminLayout'
 // Public pages
 import { LoginPage } from './pages/public/LoginPage'
 import { RegisterPage } from './pages/public/RegisterPage'
+import { ForgotPasswordPage } from './pages/public/ForgotPasswordPage'
+import { ResetPasswordPage } from './pages/public/ResetPasswordPage'
 
 // Locked
 import { LockedPage } from './pages/locked/LockedPage'
@@ -45,7 +47,8 @@ export default function App() {
           <Route element={<PublicLayout />}>
             <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
             <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
-            <Route path="/forgot-password" element={<div style={{ textAlign: 'center', color: '#6B6B66', fontSize: 14 }}>Tính năng đang phát triển. Liên hệ admin để reset mật khẩu.</div>} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>
 
           {/* Locked — accessible when logged in but not active */}
