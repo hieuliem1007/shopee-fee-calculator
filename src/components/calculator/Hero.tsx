@@ -6,9 +6,9 @@ interface Props {
 }
 
 export function Hero({ mode, setMode }: Props) {
-  const opts: { id: CalcMode; label: string }[] = [
+  const opts: { id: CalcMode; label: string; comingSoon?: boolean }[] = [
     { id: 'forward', label: 'Tính từ giá bán' },
-    { id: 'reverse', label: 'Tìm giá bán theo lợi nhuận' },
+    { id: 'reverse', label: 'Tìm giá bán theo lợi nhuận', comingSoon: true },
   ]
 
   return (
@@ -50,13 +50,22 @@ export function Hero({ mode, setMode }: Props) {
               color: active ? '#fff' : '#6B6B66',
               transition: 'all 0.18s ease',
               fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', gap: 8,
             }}>
               <span style={{
                 display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
                 background: active ? '#F5B81C' : '#C9C5BA',
-                marginRight: 8, verticalAlign: 'middle',
               }} />
               {o.label}
+              {o.comingSoon && (
+                <span style={{
+                  padding: '2px 8px', borderRadius: 999,
+                  background: active ? 'rgba(245,184,28,0.25)' : '#FEF3C7',
+                  color: active ? '#F5B81C' : '#92400E',
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                }}>Sắp ra mắt</span>
+              )}
             </button>
           )
         })}

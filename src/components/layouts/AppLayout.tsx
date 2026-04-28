@@ -68,11 +68,13 @@ export function AppLayout() {
               Sắp ra mắt
             </div>
             {['TikTok Calculator', 'Banner Maker'].map(name => (
-              <div key={name} style={{
-                display: 'flex', alignItems: 'center', gap: 9,
-                padding: '9px 0px', color: '#C9C5BA', fontSize: 13,
-                cursor: 'not-allowed',
-              }}>
+              <div key={name}
+                title="Sắp ra mắt — chúng tôi sẽ thông báo qua email khi tính năng sẵn sàng"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 9,
+                  padding: '9px 0px', color: '#C9C5BA', fontSize: 13,
+                  cursor: 'not-allowed',
+                }}>
                 <Lock size={14} />
                 {name}
               </div>

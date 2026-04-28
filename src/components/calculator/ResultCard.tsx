@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Bookmark, Image, Download, Share2, ArrowUp, ArrowDown, Lock } from 'lucide-react'
 import { ProfitGauge } from './ProfitGauge'
 import { AlertBadges, computeAlerts } from './AlertBadges'
 import { SaveResultDialog } from './SaveResultDialog'
+import { ShareLinkDialog } from './ShareLinkDialog'
 import { fmtVND, fmtNum, fmtPct } from '@/lib/utils'
 import { useHasFeature } from '@/hooks/useHasFeature'
 import type { Fee } from '@/types/fees'
+import type { ToastState } from '@/components/ui/Toast'
 
 interface Props {
   revenue: number
@@ -19,6 +21,7 @@ interface Props {
   category: string
   categoryLabel: string
   onSaveSuccess?: (resultId: string) => void
+  onShowToast?: (toast: ToastState) => void
 }
 
 const btnSec: React.CSSProperties = {
@@ -51,16 +54,27 @@ export function ResultCard({
   revenue, costPrice, feeTotal, profit, profitPct,
   fixedFees, varFees,
   productName, category, categoryLabel,
-  onSaveSuccess,
+  onSaveSuccess, onShowToast,
 }: Props) {
   const [hover, setHover] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [savedResultId, setSavedResultId] = useState<string | null>(null)
+  const wantShareAfterSaveRef = useRef(false)
   const isProfit = profit >= 0
   const profitColor = isProfit ? '#1D9E75' : '#E24B4A'
 
   const alerts = computeAlerts({ revenue, profit, profitPct, fixedFees, varFees })
 
   const { hasFeature: canSave, loading: featureLoading } = useHasFeature('shopee_save_result')
+  const { hasFeature: canShare, loading: shareFeatureLoading } = useHasFeature('shopee_share_link')
+
+  // Saved result tied to current inputs/fees; clear khi user thay đổi inputs hay fees
+  // → tránh share một snapshot stale.
+  const inputSignature = `${costPrice}|${revenue}|${category}|${productName}|${[...fixedFees, ...varFees].map(f => `${f.id}:${f.on?1:0}:${f.rate}`).join(',')}`
+  useEffect(() => {
+    setSavedResultId(null)
+  }, [inputSignature])
 
   const feesSnapshot = [...fixedFees, ...varFees].map(f => ({
     id: f.id,
@@ -81,6 +95,36 @@ export function ResultCard({
   const handleSaveClick = () => {
     if (!canSave || featureLoading) return
     setDialogOpen(true)
+  }
+
+  const handleShareClick = () => {
+    if (!canShare || shareFeatureLoading) return
+    if (savedResultId) {
+      setShareDialogOpen(true)
+      return
+    }
+    if (!canSave) {
+      onShowToast?.({
+        kind: 'info',
+        message: 'Vui lòng lưu kết quả trước khi chia sẻ. Vào Dashboard → Chi tiết để mở link share.',
+      })
+      return
+    }
+    onShowToast?.({
+      kind: 'info',
+      message: 'Vui lòng lưu kết quả trước khi chia sẻ.',
+    })
+    wantShareAfterSaveRef.current = true
+    setDialogOpen(true)
+  }
+
+  const handleSaved = (id: string) => {
+    setSavedResultId(id)
+    onSaveSuccess?.(id)
+    if (wantShareAfterSaveRef.current) {
+      wantShareAfterSaveRef.current = false
+      setShareDialogOpen(true)
+    }
   }
 
   return (
@@ -190,17 +234,41 @@ export function ResultCard({
         </button>
         <button style={btnSec}><Image size={14} /> Tải ảnh</button>
         <button style={btnSec}><Download size={14} /> Xuất PDF</button>
-        <button style={btnSec}><Share2 size={14} /> Chia sẻ</button>
+        <button
+          onClick={handleShareClick}
+          disabled={!canShare || shareFeatureLoading}
+          title={!canShare && !shareFeatureLoading ? 'Liên hệ admin để mở khóa tính năng chia sẻ' : undefined}
+          style={{
+            ...btnSec,
+            background: canShare ? '#FFFFFF' : '#F5F5F0',
+            color: canShare ? '#1A1A1A' : '#A8A89E',
+            cursor: canShare && !shareFeatureLoading ? 'pointer' : 'not-allowed',
+            opacity: canShare ? 1 : 0.7,
+          }}
+        >
+          {canShare ? <Share2 size={14} /> : <Lock size={14} />} Chia sẻ
+        </button>
       </div>
 
       <SaveResultDialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        onClose={() => {
+          setDialogOpen(false)
+          wantShareAfterSaveRef.current = false
+        }}
         defaultProductName={productName}
         inputs={inputs}
         feesSnapshot={feesSnapshot}
         results={results}
-        onSaved={(id) => onSaveSuccess?.(id)}
+        onSaved={handleSaved}
+      />
+
+      <ShareLinkDialog
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        resultId={savedResultId ?? ''}
+        existingSlug={null}
+        resultName={productName || 'Kết quả không tên'}
       />
 
       <style>{`

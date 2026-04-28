@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Users, Clock, DollarSign, Mail, Settings, LogOut, LayoutDashboard, Eye } from 'lucide-react'
+import { Users, Clock, DollarSign, Settings, LogOut, LayoutDashboard, Eye } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 const NAV = [
@@ -7,7 +7,6 @@ const NAV = [
   { path: '/admin/users/pending', icon: Clock, label: 'Chờ duyệt' },
   { path: '/admin/users', icon: Users, label: 'Tất cả user' },
   { path: '/admin/fees', icon: DollarSign, label: 'Cấu hình phí' },
-  { path: '/admin/email-templates', icon: Mail, label: 'Email templates' },
   { path: '/admin/settings', icon: Settings, label: 'Cấu hình hệ thống' },
 ]
 

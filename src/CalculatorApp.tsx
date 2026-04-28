@@ -13,7 +13,9 @@ import { ScenariosSection } from './components/calculator/Scenarios'
 import { useFeeCalculator } from './hooks/useFeeCalculator'
 import { useDbFees, type DbFeesState } from './lib/use-db-fees'
 import { Toast, type ToastState } from './components/ui/Toast'
-import { RefreshCw, AlertCircle } from 'lucide-react'
+import { useHasFeature } from './hooks/useHasFeature'
+import { getZaloLink } from './lib/system-config'
+import { RefreshCw, AlertCircle, Lock } from 'lucide-react'
 import type { Scenario } from './types/fees'
 import type { ScData } from './components/calculator/Scenarios'
 
@@ -72,10 +74,23 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [toast, setToast] = useState<ToastState | null>(null)
 
+  const { hasFeature: canCompare, loading: compareLoading } = useHasFeature('shopee_compare_scenarios')
+
   const handleApplyScenario = (s: ScData) => calc.applySnapshot(s.snapshot)
 
   const handleSaveSuccess = (_resultId: string) => {
     setToast({ kind: 'success', message: 'Đã lưu kết quả. Xem trong Dashboard để tìm lại.' })
+  }
+
+  const handleSetMode = (m: typeof calc.mode) => {
+    if (m === 'reverse' && calc.mode !== 'reverse') {
+      setToast({
+        kind: 'info',
+        message: "Tính năng 'Tìm giá bán theo lợi nhuận' đang phát triển. Chúng tôi sẽ thông báo qua email khi ra mắt.",
+      })
+      return
+    }
+    calc.setMode(m)
   }
 
   const currentCategory = calc.categories.find(c => c.id === calc.category)
@@ -94,7 +109,7 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
 
   return (
     <div style={{ padding: '24px 28px 48px', maxWidth: 1200 }}>
-      <Hero mode={calc.mode} setMode={calc.setMode} />
+      <Hero mode={calc.mode} setMode={handleSetMode} />
 
       <InputCard
         costPrice={calc.costPrice} setCostPrice={calc.setCostPrice}
@@ -116,6 +131,7 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
           category={calc.category}
           categoryLabel={categoryLabel}
           onSaveSuccess={handleSaveSuccess}
+          onShowToast={setToast}
         />
       </div>
 
@@ -160,11 +176,73 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
       <RecommendationCard profit={calc.profit} profitPct={calc.profitPct}
         fixedFees={calc.fixedFees} revenue={calc.revenue} />
 
-      <ScenariosSection scenarios={scenarios} setScenarios={setScenarios}
-        current={calc.currentSnapshot} onApply={handleApplyScenario}
-        categories={calc.categories} />
+      {canCompare ? (
+        <ScenariosSection scenarios={scenarios} setScenarios={setScenarios}
+          current={calc.currentSnapshot} onApply={handleApplyScenario}
+          categories={calc.categories} />
+      ) : !compareLoading ? (
+        <ScenariosLockCard />
+      ) : null}
 
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
+  )
+}
+
+function ScenariosLockCard() {
+  const [zaloLink, setZaloLink] = useState<string | null>(null)
+  const [zaloError, setZaloError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getZaloLink()
+      .then(link => { if (!cancelled) setZaloLink(link) })
+      .catch(() => { if (!cancelled) setZaloError(true) })
+    return () => { cancelled = true }
+  }, [])
+
+  const disabled = !zaloLink || zaloError
+
+  return (
+    <section style={{ marginTop: 32, paddingTop: 32, borderTop: '1px solid #EFEAE0' }}>
+      <div style={{
+        background: '#FAFAF7', border: '1px dashed #E2DDD0', borderRadius: 12,
+        padding: '24px 28px', display: 'flex', gap: 16, alignItems: 'flex-start',
+      }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+          background: '#fff', border: '1px solid #EFEAE0',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Lock size={18} color="#A47408" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 4 }}>
+            So sánh kịch bản — Tính năng nâng cao
+          </div>
+          <div style={{ fontSize: 13, color: '#6B6B66', lineHeight: 1.6, marginBottom: 14 }}>
+            Lưu nhiều cấu hình giá vốn / giá bán để so sánh lợi nhuận side-by-side.
+            Liên hệ admin để mở khóa tính năng này.
+          </div>
+          <a
+            href={disabled ? undefined : zaloLink!}
+            target="_blank"
+            rel="noreferrer"
+            aria-disabled={disabled}
+            onClick={e => { if (disabled) e.preventDefault() }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', borderRadius: 8,
+              background: disabled ? '#E5E5E0' : '#0084FF',
+              color: disabled ? '#A8A89E' : '#fff',
+              fontSize: 13, fontWeight: 500, textDecoration: 'none',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {zaloLink === null && !zaloError ? 'Đang tải...' : zaloError ? 'Vui lòng thử lại sau' : 'Liên hệ admin để mở khóa'}
+          </a>
+        </div>
+      </div>
+    </section>
   )
 }
