@@ -1,11 +1,16 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import {
-  Plus, Pencil, Trash2, Loader2, AlertCircle, AlertTriangle, Filter,
+  Plus, Pencil, Trash2, Loader2, AlertTriangle, Filter,
+  Upload, Download,
 } from 'lucide-react'
 import {
   listDefaultFees, createDefaultFee, updateDefaultFee, softDeleteDefaultFee,
   isSeedFee, type DefaultFee, type FeeUnit,
+  listCategoryFees, createCategoryFee, updateCategoryFee, softDeleteCategoryFee,
+  type CategoryFee,
 } from '@/lib/fees-admin'
+import { downloadSampleExcel } from '@/lib/import-excel'
+import { CategoryImportDialog } from '@/components/admin/CategoryImportDialog'
 
 // ── Layout helpers ──────────────────────────────────────────────────
 
@@ -497,6 +502,7 @@ export function AdminFeesPage() {
   const [tab, setTab] = useState<'fees' | 'categories'>('fees')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active')
   const [fees, setFees] = useState<DefaultFee[]>([])
+  const [categoryFees, setCategoryFees] = useState<CategoryFee[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [editTarget, setEditTarget] = useState<DefaultFee | null>(null)
@@ -510,12 +516,25 @@ export function AdminFeesPage() {
 
   const load = async () => {
     setLoading(true)
-    const data = await listDefaultFees(true) // load all, filter client-side
-    setFees(data)
+    const [defaults, cats] = await Promise.all([
+      listDefaultFees(true),
+      listCategoryFees(true),
+    ])
+    setFees(defaults)
+    setCategoryFees(cats)
     setLoading(false)
   }
 
+  const reloadCategories = async () => {
+    const cats = await listCategoryFees(true)
+    setCategoryFees(cats)
+  }
+
   useEffect(() => { load() }, [])
+
+  const activeCategoryCount = useMemo(
+    () => categoryFees.filter(c => c.is_active).length, [categoryFees]
+  )
 
   const filtered = useMemo(() => {
     if (statusFilter === 'all') return fees
@@ -547,7 +566,7 @@ export function AdminFeesPage() {
           Phí chung ({activeCount})
         </TabButton>
         <TabButton active={tab === 'categories'} onClick={() => setTab('categories')}>
-          Phí ngành hàng (6)
+          Phí ngành hàng ({activeCategoryCount})
         </TabButton>
       </div>
 
@@ -627,17 +646,12 @@ export function AdminFeesPage() {
       )}
 
       {tab === 'categories' && (
-        <Card padding={56}>
-          <div style={{ textAlign: 'center', color: '#6B6B66' }}>
-            <AlertCircle size={28} color="#D1D5DB" style={{ marginBottom: 10 }} />
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#1A1A1A', marginBottom: 4 }}>
-              Tab "Phí ngành hàng" sẽ build ở Milestone 3.3
-            </div>
-            <div style={{ fontSize: 13 }}>
-              Tạm thời 6 ngành đã được migrate sang `category_fees` table — anh xem qua MCP execute_sql.
-            </div>
-          </div>
-        </Card>
+        <CategoryTab
+          categoryFees={categoryFees}
+          loading={loading}
+          showToast={showToast}
+          reload={reloadCategories}
+        />
       )}
 
       {/* Dialogs */}
@@ -742,5 +756,533 @@ function FeeRow({ fee, onEdit, onDelete }: {
         </button>
       </div>
     </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CATEGORY TAB (Tab 2)
+// ════════════════════════════════════════════════════════════════════
+
+interface CategoryTabProps {
+  categoryFees: CategoryFee[]
+  loading: boolean
+  showToast: (type: 'success' | 'error', message: string) => void
+  reload: () => Promise<void>
+}
+
+function CategoryTab({ categoryFees, loading, showToast, reload }: CategoryTabProps) {
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('active')
+  const [showAdd, setShowAdd] = useState(false)
+  const [editTarget, setEditTarget] = useState<CategoryFee | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<CategoryFee | null>(null)
+  const [showImport, setShowImport] = useState(false)
+
+  const filtered = useMemo(() => {
+    if (statusFilter === 'all') return categoryFees
+    if (statusFilter === 'active') return categoryFees.filter(c => c.is_active)
+    return categoryFees.filter(c => !c.is_active)
+  }, [categoryFees, statusFilter])
+
+  const activeCount = useMemo(() => categoryFees.filter(c => c.is_active).length, [categoryFees])
+  const inactiveCount = useMemo(() => categoryFees.filter(c => !c.is_active).length, [categoryFees])
+
+  return (
+    <>
+      {/* Action row */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        gap: 12, marginBottom: 14, flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button onClick={() => setShowAdd(true)} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 8, border: 'none',
+            background: '#1D9E75', color: '#fff', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            <Plus size={14} /> Thêm ngành mới
+          </button>
+          <button onClick={() => setShowImport(true)} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 8,
+            border: '1px solid #EFEAE0', background: '#fff',
+            fontSize: 13, fontWeight: 500, color: '#1A1A1A',
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            <Upload size={14} /> Import từ Excel
+          </button>
+          <button onClick={() => downloadSampleExcel()} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 8,
+            border: '1px solid #EFEAE0', background: '#fff',
+            fontSize: 13, fontWeight: 500, color: '#1A1A1A',
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            <Download size={14} /> Tải file mẫu
+          </button>
+        </div>
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '0 12px', borderRadius: 8,
+          border: '1px solid #EFEAE0', background: '#fff', height: 36,
+        }}>
+          <Filter size={13} color="#8A8A82" />
+          <select value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value as StatusFilter)}
+            style={{
+              border: 'none', background: 'transparent', outline: 'none',
+              fontSize: 13, color: '#1A1A1A', fontFamily: 'inherit', cursor: 'pointer',
+            }}>
+            <option value="all">Tất cả ({categoryFees.length})</option>
+            <option value="active">Active ({activeCount})</option>
+            <option value="inactive">Đã xóa ({inactiveCount})</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Table */}
+      <Card>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(160px, 1fr) 100px 80px minmax(220px, 2fr) 90px 110px',
+          gap: 14, alignItems: 'center',
+          padding: '11px 18px', background: '#FAFAF7',
+          borderBottom: '1px solid #EFEAE0',
+          fontSize: 11, fontWeight: 600, color: '#8A8A82',
+          letterSpacing: '0.06em', textTransform: 'uppercase',
+        }}>
+          <span>Tên ngành</span>
+          <span>Phí</span>
+          <span>Đơn vị</span>
+          <span>Mô tả</span>
+          <span>Cập nhật</span>
+          <span style={{ textAlign: 'right' }}>Action</span>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: 60, textAlign: 'center' }}>
+            <Loader2 size={24} color="#F5B81C" style={{ animation: 'spin 0.7s linear infinite' }} />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: 56, textAlign: 'center' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
+            <div style={{ fontSize: 14, color: '#6B6B66' }}>Không có ngành nào trong bộ lọc.</div>
+          </div>
+        ) : (
+          filtered.map(c => (
+            <CategoryRow key={c.id} category={c}
+              onEdit={() => setEditTarget(c)}
+              onDelete={() => setDeleteTarget(c)} />
+          ))
+        )}
+      </Card>
+
+      {/* Dialogs */}
+      {showAdd && (
+        <AddCategoryDialog
+          onClose={() => setShowAdd(false)}
+          onSuccess={msg => { setShowAdd(false); showToast('success', msg); reload() }}
+          onError={msg => showToast('error', msg)}
+        />
+      )}
+      {editTarget && (
+        <EditCategoryDialog category={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSuccess={msg => { setEditTarget(null); showToast('success', msg); reload() }}
+          onError={msg => showToast('error', msg)}
+        />
+      )}
+      {deleteTarget && (
+        <DeleteCategoryDialog category={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onSuccess={msg => { setDeleteTarget(null); showToast('success', msg); reload() }}
+          onError={msg => showToast('error', msg)}
+        />
+      )}
+      {showImport && (
+        <CategoryImportDialog
+          onClose={() => setShowImport(false)}
+          onSuccess={result => {
+            setShowImport(false)
+            showToast('success', `Import thành công: cập nhật ${result.updated}, thêm mới ${result.imported}`)
+            reload()
+          }}
+          onError={msg => showToast('error', msg)}
+        />
+      )}
+    </>
+  )
+}
+
+function CategoryRow({ category, onEdit, onDelete }: {
+  category: CategoryFee
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'minmax(160px, 1fr) 100px 80px minmax(220px, 2fr) 90px 110px',
+      gap: 14, alignItems: 'center',
+      padding: '11px 18px', borderBottom: '1px solid #F5F2EA',
+      opacity: category.is_active ? 1 : 0.55,
+    }}>
+      <div style={{ fontSize: 13, color: '#1A1A1A', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {category.category_name}
+      </div>
+      <div style={{ fontSize: 13, color: '#1A1A1A', fontVariantNumeric: 'tabular-nums' }}>
+        {formatValue(category.fee_value, category.fee_unit)}
+      </div>
+      <div style={{ fontSize: 12, color: '#6B6B66' }}>
+        {category.fee_unit === 'percent' ? '%' : 'VND'}
+      </div>
+      <div style={{
+        fontSize: 12, color: '#6B6B66',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+        {category.description ?? <span style={{ color: '#A8A89E' }}>—</span>}
+      </div>
+      <div style={{ fontSize: 12, color: '#A8A89E' }}>
+        {formatDate(category.updated_at)}
+      </div>
+      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+        <button onClick={onEdit} title="Sửa" disabled={!category.is_active} style={{
+          padding: 6, borderRadius: 6, border: '1px solid #EFEAE0',
+          background: '#fff', cursor: category.is_active ? 'pointer' : 'not-allowed',
+          color: '#1A1A1A', display: 'flex', alignItems: 'center',
+          opacity: category.is_active ? 1 : 0.4,
+        }}>
+          <Pencil size={13} />
+        </button>
+        <button onClick={onDelete} title="Xóa" disabled={!category.is_active} style={{
+          padding: 6, borderRadius: 6, border: '1px solid #FCA5A5',
+          background: '#FEF2F2', cursor: category.is_active ? 'pointer' : 'not-allowed',
+          color: '#A82928', display: 'flex', alignItems: 'center',
+          opacity: category.is_active ? 1 : 0.4,
+        }}>
+          <Trash2 size={13} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Add category dialog ─────────────────────────────────────────────
+
+function AddCategoryDialog({ onClose, onSuccess, onError }: {
+  onClose: () => void
+  onSuccess: (msg: string) => void
+  onError: (msg: string) => void
+}) {
+  const [form, setForm] = useState({
+    category_name: '', fee_value: '', fee_unit: 'percent' as FeeUnit, description: '',
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+
+  const handleSubmit = async () => {
+    const errs: Record<string, string> = {}
+    if (!form.category_name.trim()) errs.category_name = 'Tên ngành không được rỗng'
+    const value = parseFloat(form.fee_value)
+    if (form.fee_value === '' || isNaN(value)) errs.fee_value = 'Giá trị phải là số'
+    else if (value < 0) errs.fee_value = 'Phí không thể âm'
+    else if (form.fee_unit === 'percent' && value > 100) errs.fee_value = 'Phí % không vượt 100'
+    if (Object.keys(errs).length) {
+      setErrors(errs)
+      return
+    }
+
+    setSaving(true)
+    const { error } = await createCategoryFee({
+      category_name: form.category_name.trim(),
+      fee_value: value,
+      fee_unit: form.fee_unit,
+      description: form.description.trim() || null,
+    })
+    setSaving(false)
+    if (error) {
+      onError(error)
+      return
+    }
+    onSuccess('Đã thêm ngành mới')
+  }
+
+  return (
+    <DialogShell onClose={onClose}>
+      <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 16 }}>
+        Thêm ngành hàng mới
+      </div>
+      <form onSubmit={e => { e.preventDefault(); handleSubmit() }}>
+        <div style={{ marginBottom: 12 }}>
+          <FieldLabel required>Tên ngành</FieldLabel>
+          <input type="text" value={form.category_name}
+            onChange={e => { setForm(f => ({ ...f, category_name: e.target.value })); setErrors(p => ({ ...p, category_name: '' })) }}
+            placeholder="VD: Sách báo" style={inputStyle(!!errors.category_name)} />
+          {errors.category_name && <ErrorText>{errors.category_name}</ErrorText>}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 12, marginBottom: 12 }}>
+          <div>
+            <FieldLabel required>Phí</FieldLabel>
+            <input type="number" step="0.01" value={form.fee_value}
+              onChange={e => { setForm(f => ({ ...f, fee_value: e.target.value })); setErrors(p => ({ ...p, fee_value: '' })) }}
+              style={inputStyle(!!errors.fee_value)} />
+            {errors.fee_value && <ErrorText>{errors.fee_value}</ErrorText>}
+          </div>
+          <div>
+            <FieldLabel required>Đơn vị</FieldLabel>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              {(['percent', 'vnd'] as const).map(u => (
+                <label key={u} style={{
+                  flex: 1, padding: '8px 10px', borderRadius: 7,
+                  border: `1.5px solid ${form.fee_unit === u ? '#1D9E75' : '#EFEAE0'}`,
+                  background: form.fee_unit === u ? '#DCFCE7' : '#FAFAF7',
+                  cursor: 'pointer', fontSize: 12, textAlign: 'center', fontWeight: 500,
+                }}>
+                  <input type="radio" checked={form.fee_unit === u}
+                    onChange={() => setForm(f => ({ ...f, fee_unit: u }))} style={{ display: 'none' }} />
+                  {u === 'percent' ? '%' : 'VND'}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 18 }}>
+          <FieldLabel>Mô tả</FieldLabel>
+          <textarea value={form.description} rows={2}
+            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            placeholder="Mô tả ngành hàng (tùy chọn)..."
+            style={{ ...inputStyle(false), resize: 'vertical', fontFamily: 'inherit' }} />
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <SecondaryButton onClick={onClose} disabled={saving}>Hủy</SecondaryButton>
+          <PrimaryButton onClick={handleSubmit} loading={saving}>Tạo ngành</PrimaryButton>
+        </div>
+      </form>
+    </DialogShell>
+  )
+}
+
+// ── Edit category dialog ────────────────────────────────────────────
+
+function EditCategoryDialog({ category, onClose, onSuccess, onError }: {
+  category: CategoryFee
+  onClose: () => void
+  onSuccess: (msg: string) => void
+  onError: (msg: string) => void
+}) {
+  const [form, setForm] = useState({
+    category_name: category.category_name,
+    fee_value: String(category.fee_value),
+    fee_unit: category.fee_unit,
+    description: category.description ?? '',
+    display_order: String(category.display_order ?? 0),
+  })
+  const [reason, setReason] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+
+  const valueChanged = parseFloat(form.fee_value) !== category.fee_value
+  const unitChanged = form.fee_unit !== category.fee_unit
+  const valueOrUnitChanged = valueChanged || unitChanged
+
+  const handleSubmit = async () => {
+    const errs: Record<string, string> = {}
+    if (!form.category_name.trim()) errs.category_name = 'Tên ngành không được rỗng'
+    const value = parseFloat(form.fee_value)
+    if (form.fee_value === '' || isNaN(value)) errs.fee_value = 'Giá trị phải là số'
+    else if (value < 0) errs.fee_value = 'Phí không thể âm'
+    else if (form.fee_unit === 'percent' && value > 100) errs.fee_value = 'Phí % không vượt 100'
+    if (valueOrUnitChanged && !reason.trim()) {
+      errs.reason = 'Lý do thay đổi bắt buộc khi sửa giá trị'
+    }
+    if (Object.keys(errs).length) {
+      setErrors(errs)
+      return
+    }
+
+    const changes: Parameters<typeof updateCategoryFee>[1] = {}
+    if (form.category_name.trim() !== category.category_name) changes.category_name = form.category_name.trim()
+    if (value !== category.fee_value) changes.fee_value = value
+    if (form.fee_unit !== category.fee_unit) changes.fee_unit = form.fee_unit
+    const descTrim = form.description.trim()
+    const oldDesc = category.description ?? ''
+    if (descTrim !== oldDesc) changes.description = descTrim || null
+    const newOrder = parseInt(form.display_order, 10)
+    if (!isNaN(newOrder) && newOrder !== (category.display_order ?? 0)) changes.display_order = newOrder
+
+    if (Object.keys(changes).length === 0) {
+      onClose()
+      return
+    }
+
+    setSaving(true)
+    const { data, error } = await updateCategoryFee(
+      category.id,
+      changes,
+      reason.trim() || 'Cập nhật metadata',
+    )
+    setSaving(false)
+    if (error) {
+      onError(error)
+      return
+    }
+    onSuccess(`Đã cập nhật, ${data?.changed_count ?? 0} field thay đổi`)
+  }
+
+  return (
+    <DialogShell onClose={onClose}>
+      <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 16 }}>
+        Sửa ngành: {category.category_name}
+      </div>
+      <form onSubmit={e => { e.preventDefault(); handleSubmit() }}>
+        <div style={{ marginBottom: 12 }}>
+          <FieldLabel required>Tên ngành</FieldLabel>
+          <input type="text" value={form.category_name}
+            onChange={e => { setForm(f => ({ ...f, category_name: e.target.value })); setErrors(p => ({ ...p, category_name: '' })) }}
+            style={inputStyle(!!errors.category_name)} />
+          {errors.category_name && <ErrorText>{errors.category_name}</ErrorText>}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 12, marginBottom: 12 }}>
+          <div>
+            <FieldLabel required>Phí</FieldLabel>
+            <input type="number" step="0.01" value={form.fee_value}
+              onChange={e => { setForm(f => ({ ...f, fee_value: e.target.value })); setErrors(p => ({ ...p, fee_value: '' })) }}
+              style={inputStyle(!!errors.fee_value)} />
+            {errors.fee_value && <ErrorText>{errors.fee_value}</ErrorText>}
+          </div>
+          <div>
+            <FieldLabel required>Đơn vị</FieldLabel>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              {(['percent', 'vnd'] as const).map(u => (
+                <label key={u} style={{
+                  flex: 1, padding: '8px 10px', borderRadius: 7,
+                  border: `1.5px solid ${form.fee_unit === u ? '#1D9E75' : '#EFEAE0'}`,
+                  background: form.fee_unit === u ? '#DCFCE7' : '#FAFAF7',
+                  cursor: 'pointer', fontSize: 12, textAlign: 'center', fontWeight: 500,
+                }}>
+                  <input type="radio" checked={form.fee_unit === u}
+                    onChange={() => setForm(f => ({ ...f, fee_unit: u }))} style={{ display: 'none' }} />
+                  {u === 'percent' ? '%' : 'VND'}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <FieldLabel>Mô tả</FieldLabel>
+          <textarea value={form.description} rows={2}
+            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            style={{ ...inputStyle(false), resize: 'vertical', fontFamily: 'inherit' }} />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <FieldLabel>Thứ tự hiển thị</FieldLabel>
+          <input type="number" value={form.display_order}
+            onChange={e => setForm(f => ({ ...f, display_order: e.target.value }))}
+            style={inputStyle(false)} />
+        </div>
+
+        <div style={{ marginBottom: 18 }}>
+          <FieldLabel required={valueOrUnitChanged}>
+            Lý do thay đổi {valueOrUnitChanged ? '(bắt buộc khi sửa giá/đơn vị)' : '(tùy chọn)'}
+          </FieldLabel>
+          <textarea value={reason} rows={2}
+            onChange={e => { setReason(e.target.value); setErrors(p => ({ ...p, reason: '' })) }}
+            placeholder="VD: Shopee tăng phí ngành thời trang từ Q3"
+            style={{ ...inputStyle(!!errors.reason), resize: 'vertical', fontFamily: 'inherit' }} />
+          {errors.reason && <ErrorText>{errors.reason}</ErrorText>}
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <SecondaryButton onClick={onClose} disabled={saving}>Hủy</SecondaryButton>
+          <PrimaryButton onClick={handleSubmit} loading={saving}>Lưu thay đổi</PrimaryButton>
+        </div>
+      </form>
+    </DialogShell>
+  )
+}
+
+// ── Delete category dialog ──────────────────────────────────────────
+
+function DeleteCategoryDialog({ category, onClose, onSuccess, onError }: {
+  category: CategoryFee
+  onClose: () => void
+  onSuccess: (msg: string) => void
+  onError: (msg: string) => void
+}) {
+  const [reason, setReason] = useState('')
+  const [confirmed, setConfirmed] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+
+  const handle = async () => {
+    const errs: Record<string, string> = {}
+    if (!reason.trim()) errs.reason = 'Lý do xóa bắt buộc'
+    if (!confirmed) errs.confirmed = 'Vui lòng xác nhận'
+    if (Object.keys(errs).length) {
+      setErrors(errs)
+      return
+    }
+    setSaving(true)
+    const { error } = await softDeleteCategoryFee(category.id, reason.trim())
+    setSaving(false)
+    if (error) {
+      onError(error)
+      return
+    }
+    onSuccess('Đã xóa ngành')
+  }
+
+  return (
+    <DialogShell onClose={onClose}>
+      <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 6 }}>
+        Xóa ngành: {category.category_name}
+      </div>
+      <div style={{ fontSize: 13, color: '#6B6B66', marginBottom: 14 }}>
+        Ngành sẽ bị soft delete (set is_active=false). User của calculator sẽ không thấy ngành này nữa.
+      </div>
+
+      <div style={{
+        padding: '12px 14px', borderRadius: 8,
+        background: '#FEF2F2', border: '1px solid #FCA5A5',
+        fontSize: 12, color: '#991B1B', marginBottom: 14,
+        display: 'flex', alignItems: 'flex-start', gap: 10,
+      }}>
+        <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+        <span>
+          User đang dùng <strong>{category.category_name}</strong> trong calculator có thể bị mất default rate. Cân nhắc kỹ.
+        </span>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <FieldLabel required>Lý do xóa</FieldLabel>
+        <textarea value={reason} rows={2}
+          onChange={e => { setReason(e.target.value); setErrors(p => ({ ...p, reason: '' })) }}
+          placeholder="VD: Ngành không còn áp dụng từ tháng 6/2026"
+          style={{ ...inputStyle(!!errors.reason), resize: 'vertical', fontFamily: 'inherit' }} />
+        {errors.reason && <ErrorText>{errors.reason}</ErrorText>}
+      </div>
+
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 18, fontSize: 13, color: '#1A1A1A', cursor: 'pointer' }}>
+        <input type="checkbox" checked={confirmed}
+          onChange={e => { setConfirmed(e.target.checked); setErrors(p => ({ ...p, confirmed: '' })) }}
+          style={{ marginTop: 2, accentColor: '#A82928' }} />
+        <span>Tôi hiểu hành động này và muốn xóa ngành <strong>{category.category_name}</strong>.</span>
+      </label>
+      {errors.confirmed && <ErrorText>{errors.confirmed}</ErrorText>}
+
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <SecondaryButton onClick={onClose} disabled={saving}>Hủy</SecondaryButton>
+        <PrimaryButton onClick={handle} loading={saving} danger disabled={!confirmed}>
+          Xác nhận xóa
+        </PrimaryButton>
+      </div>
+    </DialogShell>
   )
 }
