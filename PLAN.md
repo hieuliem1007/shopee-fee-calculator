@@ -496,9 +496,11 @@ Tổng thời gian: **~1 tháng** (4 tuần × 5-7 buổi/tuần × 1-3 tiếng/
 
 ---
 
-### Phase 2 — Quản lý user + phân quyền (Tuần 2)
+### Phase 2 — Quản lý user + phân quyền (Tuần 2) — **STABLE** (28/04/2026, tag `phase-2-stable`)
 
 **Mục tiêu:** Admin có thể quản lý toàn diện user.
+
+> Đã hoàn thành 5 milestones (2.1 RPCs → 2.5 Profile + Audit). Xem [docs/PHASE-2-COMPLETE.md](./docs/PHASE-2-COMPLETE.md) và [docs/LESSONS-LEARNED-PHASE-2.md](./docs/LESSONS-LEARNED-PHASE-2.md).
 
 **Việc làm:**
 
