@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Loader2, AlertCircle, Clock, Calculator } from 'lucide-react'
 import { getPublicResult, type PublicResultData } from '@/lib/saved-results'
+import { trackShareLinkViewed } from '@/lib/analytics'
 import { fmtVND, fmtPct } from '@/lib/utils'
 
 interface FeeSnapshotItem {
@@ -37,6 +38,7 @@ export function PublicSharePage() {
       }
       setData(data)
       setLoading(false)
+      trackShareLinkViewed(data.tool_id || 'shopee_calculator')
     })
     return () => { cancelled = true }
   }, [slug])

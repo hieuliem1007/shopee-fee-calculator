@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { getUserFeatures } from '@/lib/auth'
+import { trackFeatureLocked } from '@/lib/analytics'
 
 interface Props {
   feature: string
@@ -33,8 +34,10 @@ export function FeatureGate({ feature, children, fallback }: Props) {
     setChecking(true)
     getUserFeatures(user.id).then(features => {
       if (cancelled) return
-      setHasFeature(features.includes(feature))
+      const has = features.includes(feature)
+      setHasFeature(has)
       setChecking(false)
+      if (!has) trackFeatureLocked(feature)
     })
     return () => { cancelled = true }
   }, [authLoading, user, profile, isAdmin, blockedByStatus, feature])

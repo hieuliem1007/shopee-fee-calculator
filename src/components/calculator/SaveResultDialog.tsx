@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Bookmark, X, Loader2 } from 'lucide-react'
 import { saveResult } from '@/lib/saved-results'
+import { trackSaveResult } from '@/lib/analytics'
 import { fmtVND, fmtPct } from '@/lib/utils'
 
 interface Props {
@@ -66,6 +67,7 @@ export function SaveResultDialog({
       setError(msg)
       return
     }
+    trackSaveResult('shopee_calculator', trimmed.length > 0)
     onSaved(data.result_id)
     onClose()
   }

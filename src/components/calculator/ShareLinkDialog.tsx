@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Share2, Copy, Check, X, Loader2, RefreshCw, AlertTriangle } from 'lucide-react'
 import { createShareLink } from '@/lib/saved-results'
+import { trackShareLinkCreated } from '@/lib/analytics'
 
 interface Props {
   open: boolean
@@ -60,6 +61,7 @@ export function ShareLinkDialog({
     setSlug(data.slug)
     setState('created')
     onSlugChanged?.(data.slug)
+    trackShareLinkCreated('shopee_calculator')
   }
 
   const handleRecreateConfirmed = async () => {
@@ -75,6 +77,7 @@ export function ShareLinkDialog({
     setCopied(false)
     setState('created')
     onSlugChanged?.(data.slug)
+    trackShareLinkCreated('shopee_calculator')
   }
 
   const handleCopy = async () => {

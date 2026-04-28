@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute, AdminRoute, GuestRoute } from './routes/ProtectedRoute'
+import { AnalyticsProvider } from './components/AnalyticsProvider'
 
 // Layouts
 import { PublicLayout } from './components/layouts/PublicLayout'
@@ -42,6 +43,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <AnalyticsProvider>
         <Routes>
           {/* Public — redirect to app if already logged in */}
           <Route element={<PublicLayout />}>
@@ -84,6 +86,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        </AnalyticsProvider>
       </AuthProvider>
     </BrowserRouter>
   )

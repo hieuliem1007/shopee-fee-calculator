@@ -1,6 +1,7 @@
 // Original Shopee Fee Calculator UI — served at /app/shopee-calculator
 // Phase 3: data-driven (DB-backed). Per-session load.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { trackCalculatorUsed } from './lib/analytics'
 import { SectionHeader } from './components/layout/SectionHeader'
 import { Hero } from './components/calculator/Hero'
 import { InputCard } from './components/calculator/InputCard'
@@ -79,6 +80,17 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
 
   const currentCategory = calc.categories.find(c => c.id === calc.category)
   const categoryLabel = currentCategory?.name ?? ''
+
+  // GA: track khi user đã có đủ inputs (cost + sell + category). Throttle 5s
+  // để tránh spam mỗi keystroke. Reset throttle khi đổi ngành (event mới).
+  const lastTrackRef = useRef<number>(0)
+  useEffect(() => {
+    if (calc.costPrice <= 0 || calc.sellPrice <= 0 || !calc.category) return
+    const now = Date.now()
+    if (now - lastTrackRef.current < 5000) return
+    lastTrackRef.current = now
+    trackCalculatorUsed(calc.category, calc.profitPct)
+  }, [calc.costPrice, calc.sellPrice, calc.category, calc.profitPct])
 
   return (
     <div style={{ padding: '24px 28px 48px', maxWidth: 1200 }}>
