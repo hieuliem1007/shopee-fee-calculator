@@ -16,6 +16,7 @@ import { LockedPage } from './pages/locked/LockedPage'
 
 // App pages
 import { DashboardPage } from './pages/app/DashboardPage'
+import { UserProfilePage } from './pages/app/UserProfilePage'
 
 // Admin pages
 import { PendingUsersPage } from './pages/admin/PendingUsersPage'
@@ -44,6 +45,7 @@ export default function App() {
           {/* App — requires active user */}
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/app" element={<DashboardPage />} />
+            <Route path="/app/profile" element={<UserProfilePage />} />
             <Route path="/app/shopee-calculator" element={<CalculatorApp />} />
           </Route>
 

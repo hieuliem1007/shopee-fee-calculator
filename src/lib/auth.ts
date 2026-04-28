@@ -100,6 +100,12 @@ function mapErrorMessage(error: { code?: string; message?: string } | null): str
       if (error.message?.includes('Invalid features:')) {
         return 'Có feature không hợp lệ'
       }
+      if (error.message?.includes('Not authenticated')) {
+        return 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại'
+      }
+      if (error.message?.includes('Profile not found')) {
+        return 'Không tìm thấy hồ sơ'
+      }
       return error.message || 'Lỗi không xác định'
     default:
       if (error.code?.startsWith('PGRST')) {
@@ -292,6 +298,31 @@ export async function updateUserProfileAdmin(
   const { error } = await supabase.rpc('update_user_profile_admin', params)
   if (error) return { error: mapErrorMessage(error) }
   return { error: null }
+}
+
+
+// ── User self profile update ────────────────────────────────────
+export interface UpdateMyProfileInput {
+  full_name?: string
+  phone?: string
+}
+
+export interface UpdateMyProfileResult {
+  success: boolean
+  changed_fields: string[]
+  changed_count: number
+}
+
+export async function updateMyProfile(
+  input: UpdateMyProfileInput
+): Promise<{ data: UpdateMyProfileResult | null; error: string | null }> {
+  const params: Record<string, unknown> = {}
+  if (input.full_name !== undefined) params.p_full_name = input.full_name
+  if (input.phone !== undefined) params.p_phone = input.phone
+
+  const { data, error } = await supabase.rpc('update_my_profile', params)
+  if (error) return { data: null, error: mapErrorMessage(error) }
+  return { data: data as UpdateMyProfileResult, error: null }
 }
 
 
