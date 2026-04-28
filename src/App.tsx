@@ -14,6 +14,9 @@ import { RegisterPage } from './pages/public/RegisterPage'
 // Locked
 import { LockedPage } from './pages/locked/LockedPage'
 
+// Feature gate
+import { FeatureGate } from './components/FeatureGate'
+
 // App pages
 import { DashboardPage } from './pages/app/DashboardPage'
 import { UserProfilePage } from './pages/app/UserProfilePage'
@@ -48,7 +51,11 @@ export default function App() {
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/app" element={<DashboardPage />} />
             <Route path="/app/profile" element={<UserProfilePage />} />
-            <Route path="/app/shopee-calculator" element={<CalculatorApp />} />
+            <Route path="/app/shopee-calculator" element={
+              <FeatureGate feature="shopee_calculator_access">
+                <CalculatorApp />
+              </FeatureGate>
+            } />
           </Route>
 
           {/* Admin — requires is_admin */}

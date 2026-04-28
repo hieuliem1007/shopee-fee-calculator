@@ -68,8 +68,39 @@ export async function updateSystemConfig(
     p_value: value,
   })
   if (error) return { data: null, error: extractError(error) }
+  // Invalidate Zalo cache nếu update key zalo_link
+  if (key === 'zalo_link') invalidateZaloLinkCache()
   return { data: data as { success: boolean; changed: boolean }, error: null }
 }
+
+// In-memory cache cho session — tránh fetch lặp khi navigate giữa các page.
+let zaloLinkCache: { value: string; fetchedAt: number } | null = null
+const ZALO_CACHE_TTL_MS = 5 * 60 * 1000 // 5 phút
+
+const ZALO_FALLBACK = 'https://zalo.me/'
+
+export async function getZaloLink(): Promise<string> {
+  const now = Date.now()
+  if (zaloLinkCache && now - zaloLinkCache.fetchedAt < ZALO_CACHE_TTL_MS) {
+    return zaloLinkCache.value
+  }
+  const { data, error } = await supabase
+    .from('system_config')
+    .select('value')
+    .eq('key', 'zalo_link')
+    .single()
+  if (error || !data) return ZALO_FALLBACK
+  const raw = (data as { value: unknown }).value
+  const value = typeof raw === 'string' ? raw : String(raw ?? '')
+  const finalValue = value || ZALO_FALLBACK
+  zaloLinkCache = { value: finalValue, fetchedAt: now }
+  return finalValue
+}
+
+export function invalidateZaloLinkCache() {
+  zaloLinkCache = null
+}
+
 
 // Validate value cho từng key đặc biệt. Return error message nếu invalid.
 export function validateConfigValue(key: string, value: string): string | null {
