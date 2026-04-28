@@ -547,9 +547,11 @@ Tổng thời gian: **~1 tháng** (4 tuần × 5-7 buổi/tuần × 1-3 tiếng/
 
 ---
 
-### Phase 3 — Cấu hình phí mặc định + tính phí Shopee thật (Tuần 3)
+### Phase 3 — Cấu hình phí mặc định + tính phí Shopee thật (Tuần 3) — **STABLE** (28/04/2026, tag `phase-3-stable`)
 
 **Mục tiêu:** Admin sửa phí mặc định (có audit), user dùng tính phí với phí thật từ DB.
+
+> Đã hoàn thành 7 milestones (3.1 DB → 3.2 Tab1 → 3.3 Tab2+Excel → 3.4 Settings → 3.5 Permission → 3.6 Wire → 3.7 Audit). Xem [docs/PHASE-3-COMPLETE.md](./docs/PHASE-3-COMPLETE.md) và [docs/LESSONS-LEARNED-PHASE-3.md](./docs/LESSONS-LEARNED-PHASE-3.md).
 
 **Việc làm:**
 
