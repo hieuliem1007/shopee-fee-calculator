@@ -280,7 +280,7 @@ export function UserProfilePage() {
   const statusInfo = STATUS_DOT[status]
 
   return (
-    <div style={{ padding: 32, maxWidth: 760 }}>
+    <div style={{ padding: 32, maxWidth: 760, margin: '0 auto' }}>
       <div style={{ marginBottom: 22 }}>
         <h1 style={{
           margin: 0, fontSize: 22, fontWeight: 600, color: '#1A1A1A',

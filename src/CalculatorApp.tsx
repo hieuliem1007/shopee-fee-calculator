@@ -122,7 +122,7 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
   }, [calc.costPrice, calc.sellPrice, calc.category, calc.profitPct])
 
   return (
-    <div style={{ padding: '24px 28px 48px', maxWidth: 1200 }}>
+    <div style={{ padding: '24px 28px 48px', maxWidth: 1200, margin: '0 auto' }}>
       <Hero mode={calc.mode} setMode={handleSetMode} />
 
       <InputCard

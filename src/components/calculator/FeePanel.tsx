@@ -50,7 +50,7 @@ function EditableText({ value, onChange }: { value: string; onChange: (v: string
   return (
     <span onClick={() => { setTmp(value); setEditing(true) }} style={{
       cursor: 'text', borderBottom: '1px dashed #C9C5BA', paddingBottom: 1,
-      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      whiteSpace: 'normal', wordBreak: 'break-word',
     }} title="Nhấn để sửa tên">{value}</span>
   )
 }
@@ -188,7 +188,7 @@ function FeeRow({ fee, dim, amt, isLast, onToggle, onRate, onKind, onName, onRem
         {fee.custom && !readOnly ? (
           <EditableText value={fee.name} onChange={onName} />
         ) : (
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.4 }}>
             {fee.name}
           </span>
         )}

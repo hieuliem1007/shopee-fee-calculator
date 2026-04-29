@@ -87,7 +87,7 @@ export function DashboardPage() {
   const rangeTo = Math.min(offset + rows.length, total)
 
   return (
-    <div style={{ padding: 32, maxWidth: 1100 }}>
+    <div style={{ padding: 32, maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ marginBottom: 22 }}>
         <h1 style={{
