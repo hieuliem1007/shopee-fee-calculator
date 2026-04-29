@@ -113,7 +113,10 @@ export function ResultCard({
 
   // Snapshot SmartAlerts vào results.alerts để khi load saved/public view
   // sẽ render đúng alerts tại thời điểm save (không phụ thuộc logic mới).
-  const smartAlerts = computeSmartAlerts({ revenue, feeTotal, profit, profitPct }, varFees)
+  const smartAlerts = computeSmartAlerts(
+    { revenue, feeTotal, profit, profitPct, costPrice },
+    fixedFees, varFees,
+  )
   const results = { feeTotal, profit, profitPct, revenue, alerts: smartAlerts }
 
   const handleSaveClick = () => {
@@ -297,7 +300,8 @@ export function ResultCard({
 
       {!smartAlertsLoading && (
         <SmartAlerts
-          result={{ revenue, feeTotal, profit, profitPct }}
+          result={{ revenue, feeTotal, profit, profitPct, costPrice }}
+          fixedFees={fixedFees}
           varFees={varFees}
           hasFeature={canSmartAlerts}
         />

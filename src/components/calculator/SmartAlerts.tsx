@@ -19,7 +19,10 @@ import { computeSmartAlerts, type SmartAlert, type SmartAlertInput } from '@/lib
 
 interface Props {
   hasFeature: boolean
+  // Live (ResultCard): pass result + fixedFees + varFees để compute.
+  // Saved/public view: pass presetAlerts đã lưu trong results.alerts.
   result?: SmartAlertInput
+  fixedFees?: Fee[]
   varFees?: Fee[]
   presetAlerts?: SmartAlert[]
 }
@@ -109,9 +112,9 @@ function UpgradeFooter({ hiddenCount }: { hiddenCount: number }) {
   )
 }
 
-export function SmartAlerts({ result, varFees, hasFeature, presetAlerts }: Props) {
+export function SmartAlerts({ result, fixedFees, varFees, hasFeature, presetAlerts }: Props) {
   const allAlerts = presetAlerts ?? (
-    result && varFees ? computeSmartAlerts(result, varFees) : []
+    result && fixedFees && varFees ? computeSmartAlerts(result, fixedFees, varFees) : []
   )
   if (allAlerts.length === 0) return null
 

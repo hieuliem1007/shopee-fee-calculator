@@ -26,6 +26,37 @@ export interface SmartAlertInput {
   feeTotal: number
   profit: number
   profitPct: number
+  costPrice: number
+}
+
+// Break-even theo cost-volume-profit:
+//   F = chi phí không phụ thuộc giá bán = giá vốn + Σ phí flat đang on
+//   k = tổng tỷ lệ phí % theo giá bán = Σ rate của các phí kind='pct' đang on
+//   Giá hòa vốn: P_hv = F / (1 - k)
+// Lưu ý: rate của fee kind='pct' đã ở dạng decimal (vd 0.035), kind='flat'
+// là raw VND (vd 1650).
+function computeBreakEven(
+  costPrice: number,
+  sellPrice: number,
+  allFees: Fee[],
+  currentFeeTotal: number,
+) {
+  let flatSum = 0
+  let pctSum = 0
+  for (const f of allFees) {
+    if (!f.on) continue
+    if (f.kind === 'flat') flatSum += f.rate
+    else pctSum += f.rate
+  }
+  const F = costPrice + flatSum
+  const k = pctSum
+  const breakEvenPrice = k < 1 ? F / (1 - k) : Number.POSITIVE_INFINITY
+  const pctIncreaseNeeded = sellPrice > 0 && Number.isFinite(breakEvenPrice)
+    ? ((breakEvenPrice - sellPrice) / sellPrice) * 100
+    : Number.POSITIVE_INFINITY
+  const maxFeeAllowed = Math.max(0, sellPrice - costPrice)
+  const feeReductionNeeded = Math.max(0, currentFeeTotal - maxFeeAllowed)
+  return { breakEvenPrice, pctIncreaseNeeded, maxFeeAllowed, feeReductionNeeded }
 }
 
 const MAX_DANGERS = 1
@@ -38,21 +69,30 @@ const TOTAL_FEE_RATIO = 0.40
 
 const fmtPct1 = (n: number) => n.toFixed(1).replace('.', ',')
 
-export function computeSmartAlerts(input: SmartAlertInput, varFees: Fee[]): SmartAlert[] {
-  const { revenue, feeTotal, profit, profitPct } = input
+export function computeSmartAlerts(
+  input: SmartAlertInput,
+  fixedFees: Fee[],
+  varFees: Fee[],
+): SmartAlert[] {
+  const { revenue, feeTotal, profit, profitPct, costPrice } = input
   const out: SmartAlert[] = []
 
   if (revenue <= 0) return out
 
   // 1. Danger lỗ — luôn quan trọng nhất, hiển thị cho mọi user.
+  // Tính P_hv chính xác theo break-even thay vì lấy %lỗ làm % tăng giá:
+  // tăng giá bán → các phí % cũng scale theo nên cần công thức F/(1-k).
   if (profit < 0) {
-    const needRevenue = revenue - profit
-    const pctIncrease = ((needRevenue - revenue) / revenue) * 100
+    const be = computeBreakEven(costPrice, revenue, [...fixedFees, ...varFees], feeTotal)
+    const isReachable = Number.isFinite(be.breakEvenPrice)
+    const desc = isReachable
+      ? `Để hòa vốn: tăng giá bán thêm ${fmtPct1(be.pctIncreaseNeeded)}% (lên ${fmtVND(Math.round(be.breakEvenPrice))}) HOẶC cắt giảm tổng phí xuống còn ${fmtVND(be.maxFeeAllowed)} (giảm ${fmtVND(Math.round(be.feeReductionNeeded))}).`
+      : `Tổng phí % vượt 100% doanh thu — không thể hòa vốn chỉ bằng tăng giá. Cần cắt giảm tổng phí xuống còn ${fmtVND(be.maxFeeAllowed)} (giảm ${fmtVND(Math.round(be.feeReductionNeeded))}).`
     out.push({
       id: 'loss',
       severity: 'danger',
       title: `Bạn đang lỗ (${fmtPct1(profitPct)}%)`,
-      description: `Cần tăng giá bán thêm tối thiểu ${fmtPct1(pctIncrease)}% hoặc cắt giảm tổng phí xuống còn ${fmtVND(needRevenue)}.`,
+      description: desc,
     })
   }
 
@@ -94,7 +134,7 @@ export function computeSmartAlerts(input: SmartAlertInput, varFees: Fee[]): Smar
       id: 'total-fee-high',
       severity: 'warning',
       title: `Tổng phí chiếm ${fmtPct1(totalRatio * 100)}% doanh thu`,
-      description: 'Cấu trúc phí đang bào mòn lợi nhuận. Cân nhắc giảm phí biến đổi (quảng cáo, affiliate, vận hành) hoặc tăng giá bán. Phí sàn Shopee là phí cố định không đổi được.',
+      description: 'Cấu trúc phí đang bào mòn lợi nhuận. Cân nhắc giảm phí biến đổi (quảng cáo, affiliate, vận hành) hoặc tăng giá bán.',
     })
   }
 
