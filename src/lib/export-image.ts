@@ -1,16 +1,52 @@
 import html2canvas from 'html2canvas'
+import { createRoot } from 'react-dom/client'
+import type { ReactElement } from 'react'
 
-export async function exportElementAsPNG(
-  element: HTMLElement,
+const TEMPLATE_WIDTH = 800
+
+async function withOffscreenTemplate<T>(
+  template: ReactElement,
+  fn: (target: HTMLElement) => Promise<T>,
+): Promise<T> {
+  const container = document.createElement('div')
+  container.style.cssText = `position: absolute; left: -9999px; top: 0; width: ${TEMPLATE_WIDTH}px; pointer-events: none;`
+  document.body.appendChild(container)
+  const root = createRoot(container)
+  root.render(template)
+
+  // Wait two animation frames + a tiny safety delay so React paints the DOM
+  // trước khi html2canvas đọc. requestAnimationFrame x2 đảm bảo commit + paint.
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+  await new Promise<void>(resolve => setTimeout(resolve, 50))
+
+  try {
+    const target = container.firstElementChild as HTMLElement | null
+    if (!target) throw new Error('Template render failed')
+    return await fn(target)
+  } finally {
+    root.unmount()
+    if (container.parentNode) container.parentNode.removeChild(container)
+  }
+}
+
+export async function exportTemplateAsPNG(
+  template: ReactElement,
   filename: string,
 ): Promise<void> {
-  const canvas = await html2canvas(element, {
-    backgroundColor: '#ffffff',
-    scale: 2,
-    logging: false,
-    useCORS: true,
+  await withOffscreenTemplate(template, async (target) => {
+    const canvas = await html2canvas(target, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      width: TEMPLATE_WIDTH,
+      windowWidth: TEMPLATE_WIDTH,
+    })
+    await canvasToBlob(canvas, filename)
   })
+}
 
+function canvasToBlob(canvas: HTMLCanvasElement, filename: string): Promise<void> {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
@@ -27,6 +63,8 @@ export async function exportElementAsPNG(
     }, 'image/png')
   })
 }
+
+export { withOffscreenTemplate, TEMPLATE_WIDTH }
 
 export function buildExportFilename(
   productName: string | undefined,
@@ -48,53 +86,4 @@ function slugify(text: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .substring(0, 50)
-}
-
-export function createBrandBanner(): HTMLDivElement {
-  const date = new Date().toLocaleDateString('vi-VN')
-  const banner = document.createElement('div')
-  banner.setAttribute('data-export-banner', '')
-  banner.style.cssText = [
-    'display: flex',
-    'align-items: center',
-    'gap: 14px',
-    'padding: 14px 20px',
-    'background: #FFFBEB',
-    'border: 1px solid #F5E5B8',
-    'border-bottom: 2px solid #FBBF24',
-    'border-radius: 12px',
-    'margin-bottom: 16px',
-    'font-family: inherit',
-  ].join(';')
-  banner.innerHTML = `
-    <div style="width:40px;height:40px;border-radius:8px;background:#FBBF24;
-                display:flex;align-items:center;justify-content:center;
-                color:#1A1A1A;font-weight:700;font-size:20px;flex-shrink:0;
-                font-family:inherit;">E</div>
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:16px;font-weight:700;color:#1A1A1A;line-height:1.3;">E-Dream Tools</div>
-      <div style="font-size:12px;color:#6B6B66;margin-top:2px;">Tính phí Shopee chính xác · ${date} · edream.vn</div>
-    </div>
-  `
-  return banner
-}
-
-export interface HiddenStyle {
-  el: HTMLElement
-  prevDisplay: string
-}
-
-export function hideExportElements(root: HTMLElement): HiddenStyle[] {
-  const matches = root.querySelectorAll<HTMLElement>('[data-export-hide]')
-  return Array.from(matches).map(el => {
-    const prevDisplay = el.style.display
-    el.style.display = 'none'
-    return { el, prevDisplay }
-  })
-}
-
-export function restoreHiddenElements(items: HiddenStyle[]): void {
-  for (const { el, prevDisplay } of items) {
-    el.style.display = prevDisplay
-  }
 }

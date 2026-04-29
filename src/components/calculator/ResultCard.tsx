@@ -4,13 +4,12 @@ import { ProfitGauge } from './ProfitGauge'
 import { AlertBadges, computeAlerts } from './AlertBadges'
 import { SaveResultDialog } from './SaveResultDialog'
 import { ShareLinkDialog } from './ShareLinkDialog'
+import { ExportTemplate, type ExportFee, type GaugeLevel } from './ExportTemplate'
 import { fmtVND, fmtNum, fmtPct } from '@/lib/utils'
 import { useHasFeature } from '@/hooks/useHasFeature'
-import {
-  exportElementAsPNG, buildExportFilename,
-  createBrandBanner, hideExportElements, restoreHiddenElements,
-} from '@/lib/export-image'
-import { exportElementAsPDF } from '@/lib/export-pdf'
+import { exportTemplateAsPNG, buildExportFilename } from '@/lib/export-image'
+import { exportTemplateAsPDF } from '@/lib/export-pdf'
+import { computeFee } from '@/lib/fees'
 import { trackEvent } from '@/lib/analytics'
 import type { Fee } from '@/types/fees'
 import type { ToastState } from '@/components/ui/Toast'
@@ -26,9 +25,10 @@ interface Props {
   productName: string
   category: string
   categoryLabel: string
+  shopTypeLabel: string
+  businessTypeLabel: string
   onSaveSuccess?: (resultId: string) => void
   onShowToast?: (toast: ToastState) => void
-  exportRef?: React.RefObject<HTMLDivElement | null>
 }
 
 const btnSec: React.CSSProperties = {
@@ -57,11 +57,30 @@ function Metric({ label, value, divider }: { label: string; value: string; divid
   )
 }
 
+function gaugeLevelFor(profitPct: number): GaugeLevel {
+  if (profitPct < 0) return 'loss'
+  if (profitPct < 1) return 'breakeven'
+  if (profitPct < 10) return 'thin'
+  if (profitPct < 25) return 'good'
+  return 'excellent'
+}
+
+function toExportFee(f: Fee, revenue: number): ExportFee {
+  return {
+    id: f.id,
+    name: f.name,
+    rate: f.rate,
+    kind: f.kind,
+    amount: computeFee(f, revenue),
+  }
+}
+
 export function ResultCard({
   revenue, costPrice, feeTotal, profit, profitPct,
   fixedFees, varFees,
   productName, category, categoryLabel,
-  onSaveSuccess, onShowToast, exportRef,
+  shopTypeLabel, businessTypeLabel,
+  onSaveSuccess, onShowToast,
 }: Props) {
   const [hover, setHover] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -69,7 +88,6 @@ export function ResultCard({
   const [savedResultId, setSavedResultId] = useState<string | null>(null)
   const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null)
   const wantShareAfterSaveRef = useRef(false)
-  const cardRef = useRef<HTMLDivElement>(null)
   const isProfit = profit >= 0
   const profitColor = isProfit ? '#1D9E75' : '#E24B4A'
 
@@ -138,20 +156,42 @@ export function ResultCard({
     }
   }
 
-  const getExportTarget = (): HTMLElement | null =>
-    exportRef?.current ?? cardRef.current
+  const buildTemplateElement = () => {
+    const activeFixed = fixedFees.filter(f => f.on).map(f => toExportFee(f, revenue))
+    const activeVar = varFees.filter(f => f.on).map(f => toExportFee(f, revenue))
+    const totalFixed = activeFixed.reduce((s, f) => s + f.amount, 0)
+    const totalVar = activeVar.reduce((s, f) => s + f.amount, 0)
+    const costPct = revenue > 0 ? (feeTotal / revenue) * 100 : 0
+    const exportDate = new Date().toLocaleDateString('vi-VN')
+
+    return (
+      <ExportTemplate
+        productName={productName}
+        category={categoryLabel || category || '—'}
+        shopType={shopTypeLabel}
+        businessType={businessTypeLabel}
+        inputs={{ costPrice, sellPrice: revenue }}
+        results={{ profit, profitPct, totalCost: feeTotal, costPct }}
+        gaugeLevel={gaugeLevelFor(profitPct)}
+        fixedFees={activeFixed}
+        variableFees={activeVar}
+        totalFixedFees={totalFixed}
+        totalVariableFees={totalVar}
+        fixedFeesActiveCount={activeFixed.length}
+        fixedFeesTotalCount={fixedFees.length}
+        variableFeesActiveCount={activeVar.length}
+        variableFeesTotalCount={varFees.length}
+        exportDate={exportDate}
+      />
+    )
+  }
 
   const handleExportImage = async () => {
-    const target = getExportTarget()
-    if (!target || !canExportImage || exportImageLoading || exporting) return
+    if (!canExportImage || exportImageLoading || exporting) return
     setExporting('png')
-    const banner = createBrandBanner()
-    let hidden: ReturnType<typeof hideExportElements> = []
     try {
-      hidden = hideExportElements(target)
-      target.insertBefore(banner, target.firstChild)
       const filename = buildExportFilename(productName, 'png')
-      await exportElementAsPNG(target, filename)
+      await exportTemplateAsPNG(buildTemplateElement(), filename)
       trackEvent('export_image', {
         event_category: 'engagement',
         tool_id: 'shopee_calculator',
@@ -160,23 +200,16 @@ export function ResultCard({
     } catch {
       onShowToast?.({ kind: 'error', message: 'Lỗi khi tải ảnh, vui lòng thử lại' })
     } finally {
-      if (banner.parentNode) banner.parentNode.removeChild(banner)
-      restoreHiddenElements(hidden)
       setExporting(null)
     }
   }
 
   const handleExportPdf = async () => {
-    const target = getExportTarget()
-    if (!target || !canExportPdf || exportPdfLoading || exporting) return
+    if (!canExportPdf || exportPdfLoading || exporting) return
     setExporting('pdf')
-    const banner = createBrandBanner()
-    let hidden: ReturnType<typeof hideExportElements> = []
     try {
-      hidden = hideExportElements(target)
-      target.insertBefore(banner, target.firstChild)
       const filename = buildExportFilename(productName, 'pdf')
-      await exportElementAsPDF(target, filename)
+      await exportTemplateAsPDF(buildTemplateElement(), filename)
       trackEvent('export_pdf', {
         event_category: 'engagement',
         tool_id: 'shopee_calculator',
@@ -185,15 +218,12 @@ export function ResultCard({
     } catch {
       onShowToast?.({ kind: 'error', message: 'Lỗi khi xuất PDF, vui lòng thử lại' })
     } finally {
-      if (banner.parentNode) banner.parentNode.removeChild(banner)
-      restoreHiddenElements(hidden)
       setExporting(null)
     }
   }
 
   return (
     <div
-      ref={cardRef}
       data-result-card
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -274,7 +304,7 @@ export function ResultCard({
       <AlertBadges alerts={alerts} />
 
       {/* Action buttons */}
-      <div className="result-actions" data-export-hide style={{
+      <div className="result-actions" style={{
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
         gap: 10, marginTop: 24,
       }}>
