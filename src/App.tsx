@@ -20,6 +20,10 @@ import { LockedPage } from './pages/locked/LockedPage'
 // Public share
 import { PublicSharePage } from './pages/public/PublicSharePage'
 
+// Legal pages (public, no auth)
+import { TermsPage } from './pages/legal/TermsPage'
+import { PrivacyPage } from './pages/legal/PrivacyPage'
+
 // Feature gate
 import { FeatureGate } from './components/FeatureGate'
 
@@ -58,6 +62,10 @@ export default function App() {
 
           {/* Public share — anon, no auth */}
           <Route path="/share/:slug" element={<PublicSharePage />} />
+
+          {/* Legal — public, no auth */}
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
 
           {/* App — requires active user */}
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
