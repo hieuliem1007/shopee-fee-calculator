@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   updateMyProfile, listAllFeatures, getUserFeatures,
 } from '@/lib/auth'
+import { ChangePasswordCard } from '@/components/profile/ChangePasswordCard'
 import type { Feature, ProfileStatus } from '@/lib/supabase'
 
 // ── Constants ───────────────────────────────────────────────────────
@@ -476,6 +477,9 @@ export function UserProfilePage() {
           </div>
         )}
       </Card>
+
+      {/* Section: Đổi mật khẩu */}
+      <ChangePasswordCard email={profile.email} onShowToast={showToast} />
 
       {/* Section 3: Trạng thái tài khoản */}
       <Card>
