@@ -214,13 +214,6 @@ function Body({ data }: { data: PublicResultData }) {
         </div>
       )}
 
-      {/* Expert Engine recommendation (snapshot, M6.8) */}
-      {savedRecommendation && (
-        <div style={{ marginBottom: 16 }}>
-          <RecommendationCard preset={savedRecommendation} />
-        </div>
-      )}
-
       {/* 2 panel phí */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)',
@@ -265,6 +258,13 @@ function Body({ data }: { data: PublicResultData }) {
           Đây là <strong>snapshot tại thời điểm lưu</strong>. Phí Shopee hiện tại có thể đã thay đổi.
         </span>
       </div>
+
+      {/* Expert Engine recommendation snapshot (M6.8). Đặt cuối — sau banner, trước CTA. */}
+      {savedRecommendation && (
+        <div style={{ marginBottom: 22 }}>
+          <RecommendationCard preset={savedRecommendation} />
+        </div>
+      )}
 
       {/* CTA */}
       <div style={{

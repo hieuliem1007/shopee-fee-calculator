@@ -196,19 +196,6 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
         />
       </div>
 
-      {/* Expert Engine — Phân tích chuyên sâu (M6.8). Render dưới ResultCard, trên FeePanel. */}
-      <RecommendationCard
-        ctx={{
-          costPrice: calc.costPrice, sellPrice: calc.sellPrice,
-          fixedFees: calc.fixedFees, varFees: calc.varFees,
-          revenue: calc.revenue, feeTotal: calc.feeTotal,
-          fixedTotal: calc.fixedTotal, varTotal: calc.varTotal,
-          profit: calc.profit, profitPct: calc.profitPct,
-          shopType: calc.shopType, productName: calc.productName,
-          categoryLabel,
-        } satisfies RecommendationContext}
-      />
-
       <section style={{ marginTop: 28 }}>
         <SectionHeader
           title="Bảng phí chi tiết"
@@ -246,6 +233,20 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
           </div>
         </div>
       </section>
+
+      {/* Expert Engine — Phân tích chuyên sâu (M6.8). Đặt sau "Top khoản phí",
+          trước "So sánh kịch bản" để user xem analytics rồi đến gợi ý hành động. */}
+      <RecommendationCard
+        ctx={{
+          costPrice: calc.costPrice, sellPrice: calc.sellPrice,
+          fixedFees: calc.fixedFees, varFees: calc.varFees,
+          revenue: calc.revenue, feeTotal: calc.feeTotal,
+          fixedTotal: calc.fixedTotal, varTotal: calc.varTotal,
+          profit: calc.profit, profitPct: calc.profitPct,
+          shopType: calc.shopType, productName: calc.productName,
+          categoryLabel,
+        } satisfies RecommendationContext}
+      />
 
       {canCompare ? (
         <ScenariosSection scenarios={scenarios} setScenarios={setScenarios}

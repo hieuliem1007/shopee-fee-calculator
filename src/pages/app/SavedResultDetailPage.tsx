@@ -240,14 +240,6 @@ export function SavedResultDetailPage() {
         </div>
       )}
 
-      {/* Expert Engine recommendation (snapshot, M6.8). Pre-M6.8 saved
-          không có recommendation field → component return null. */}
-      {savedRecommendation && (
-        <div style={{ marginBottom: 16 }}>
-          <RecommendationCard preset={savedRecommendation} />
-        </div>
-      )}
-
       {/* 2 panel phí */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)',
@@ -293,6 +285,14 @@ export function SavedResultDetailPage() {
           mở Calculator để tính lại với phí mới nhất.
         </span>
       </div>
+
+      {/* Expert Engine recommendation snapshot (M6.8). Đặt cuối — sau snapshot
+          banner, trước footer meta. Pre-M6.8 không có field → return null. */}
+      {savedRecommendation && (
+        <div style={{ marginBottom: 16 }}>
+          <RecommendationCard preset={savedRecommendation} />
+        </div>
+      )}
 
       {/* Footer meta */}
       <div style={{

@@ -15,26 +15,38 @@ interface Props {
   preset?: RecommendationOutput
 }
 
-const STATE_THEME: Record<RecommendationState, { border: string; bg: string; accent: string; chipBg: string; chipText: string }> = {
-  critical:  { border: '#DC2626', bg: '#FEF2F2', accent: '#991B1B', chipBg: '#FEE2E2', chipText: '#991B1B' },
-  warning:   { border: '#F59E0B', bg: '#FFFBEB', accent: '#92400E', chipBg: '#FEF3C7', chipText: '#92400E' },
-  caution:   { border: '#EAB308', bg: '#FEFCE8', accent: '#854D0E', chipBg: '#FEF9C3', chipText: '#854D0E' },
-  ok:        { border: '#10B981', bg: '#F0FDF4', accent: '#065F46', chipBg: '#D1FAE5', chipText: '#065F46' },
-  excellent: { border: '#059669', bg: '#ECFDF5', accent: '#064E3B', chipBg: '#A7F3D0', chipText: '#064E3B' },
+// Card wrapper màu xanh thống nhất (đồng bộ với design cũ Charts.tsx).
+// Tầng 1 Diagnosis title đổi màu theo state (critical đỏ, warning cam, ...) —
+// còn lại giữ tone xanh: border, header, section headers, action numbers.
+const CARD_THEME = {
+  border: '#DBE9F8',          // soft blue
+  bgGradientStart: '#F0F7FF', // very light blue
+  bgGradientEnd: '#F8FBFF',
+  accent: '#3B82C4',          // medium blue — header icon + section titles
+  accentDeep: '#1A5BA5',      // deep blue — accents nếu cần
+}
+
+// Diagnosis title chỉ đổi màu theo state. Body content giữ neutral.
+const DIAGNOSIS_COLOR: Record<RecommendationState, string> = {
+  critical:  '#991B1B',
+  warning:   '#92400E',
+  caution:   '#854D0E',
+  ok:        '#065F46',
+  excellent: '#064E3B',
 }
 
 export function RecommendationCard({ ctx, preset }: Props) {
   const out = useMemo(() => preset ?? (ctx ? generateRecommendation(ctx) : null), [ctx, preset])
   if (!out) return null
 
-  const theme = STATE_THEME[out.diagnosis.state]
+  const diagnosisColor = DIAGNOSIS_COLOR[out.diagnosis.state]
   const targetMarginPct = (out.goal.targetMargin * 100).toFixed(0)
 
   return (
     <div style={{
       marginTop: 18,
-      background: theme.bg,
-      border: `1.5px solid ${theme.border}`,
+      background: `linear-gradient(135deg, ${CARD_THEME.bgGradientStart} 0%, ${CARD_THEME.bgGradientEnd} 100%)`,
+      border: `1px solid ${CARD_THEME.border}`,
       borderRadius: 16, padding: 26,
       boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
     }}>
@@ -44,24 +56,24 @@ export function RecommendationCard({ ctx, preset }: Props) {
       }}>
         <div style={{
           width: 32, height: 32, borderRadius: 8,
-          background: '#fff', border: `1px solid ${theme.border}`,
+          background: '#fff', border: `1px solid ${CARD_THEME.border}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: theme.border, flexShrink: 0,
+          color: CARD_THEME.accent, flexShrink: 0,
         }}>
           <Lightbulb size={17} strokeWidth={2} />
         </div>
         <div style={{
           fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
-          color: theme.accent, textTransform: 'uppercase',
+          color: CARD_THEME.accent, textTransform: 'uppercase',
         }}>
           Phân tích chuyên sâu từ E-Dream
         </div>
       </div>
 
-      {/* Tầng 1 — Diagnosis */}
+      {/* Tầng 1 — Diagnosis (title màu theo state để giữ ngữ điệu cảnh báo) */}
       <div style={{ marginBottom: 18 }}>
         <div style={{
-          fontSize: 17, fontWeight: 700, color: theme.accent, marginBottom: 6,
+          fontSize: 17, fontWeight: 700, color: diagnosisColor, marginBottom: 6,
           letterSpacing: '-0.01em',
         }}>
           {out.diagnosis.title}
@@ -76,7 +88,7 @@ export function RecommendationCard({ ctx, preset }: Props) {
       <Divider />
 
       {/* Tầng 2 — Goal */}
-      <SectionHeader icon={<Target size={14} />} title={`Để đạt biên ${targetMarginPct}% (an toàn), bạn có 2 lựa chọn`} accent={theme.accent} />
+      <SectionHeader icon={<Target size={14} />} title={`Để đạt biên ${targetMarginPct}% (an toàn), bạn có 2 lựa chọn`} accent={CARD_THEME.accent} />
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr 1fr',
         gap: 12, marginTop: 12, marginBottom: 18,
@@ -103,7 +115,7 @@ export function RecommendationCard({ ctx, preset }: Props) {
       {out.insights.length > 0 && (
         <>
           <Divider />
-          <SectionHeader icon={<Sparkles size={14} />} title="Insight chuyên sâu" accent={theme.accent} />
+          <SectionHeader icon={<Sparkles size={14} />} title="Insight chuyên sâu" accent={CARD_THEME.accent} />
           <div style={{ marginTop: 10, marginBottom: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {out.insights.map(insight => (
               <div key={insight.id} style={{
@@ -123,7 +135,7 @@ export function RecommendationCard({ ctx, preset }: Props) {
 
       {/* Tầng 4 — Actions */}
       <Divider />
-      <SectionHeader icon={<Rocket size={14} />} title="Hành động gợi ý" accent={theme.accent} />
+      <SectionHeader icon={<Rocket size={14} />} title="Hành động gợi ý" accent={CARD_THEME.accent} />
       <ol style={{
         marginTop: 10, marginBottom: 18, paddingLeft: 0, listStyle: 'none',
         display: 'flex', flexDirection: 'column', gap: 8,
@@ -136,7 +148,7 @@ export function RecommendationCard({ ctx, preset }: Props) {
             <span style={{
               flexShrink: 0,
               width: 22, height: 22, borderRadius: '50%',
-              background: theme.border, color: '#fff',
+              background: CARD_THEME.accent, color: '#fff',
               fontSize: 12, fontWeight: 700,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               fontVariantNumeric: 'tabular-nums',
