@@ -216,7 +216,7 @@ export function ExportTemplate(props: ExportTemplateProps) {
           fontSize: 12, letterSpacing: '0.5px', color: '#0F6E56',
           textTransform: 'uppercase', marginBottom: 8, fontWeight: 500,
         }}>LỢI NHUẬN RÒNG</div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
           <div style={{
             ...NUMERIC_STYLE,
             fontSize: 32, fontWeight: 500, color: profitColor,
@@ -226,11 +226,10 @@ export function ExportTemplate(props: ExportTemplateProps) {
           </div>
           <span style={{
             ...NUMERIC_STYLE,
-            display: 'inline-block', verticalAlign: 'middle',
-            transform: 'translateY(-2px)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             background: pillBg, color: pillColor,
             padding: '4px 12px', borderRadius: 999,
-            fontSize: 14, fontWeight: 500, lineHeight: 1.4,
+            fontSize: 14, fontWeight: 500, lineHeight: 1,
             flexShrink: 0, whiteSpace: 'nowrap',
           }}>
             {pillSign}{Math.abs(results.profitPct).toFixed(2)}%
@@ -324,8 +323,9 @@ export function ExportTemplate(props: ExportTemplateProps) {
           </div>
           <div style={{
             marginLeft: 'auto', fontSize: 11, color: '#854F0B',
-            background: '#FAEEDA', padding: '3px 10px', borderRadius: 10,
-            display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+            background: '#FAEEDA', padding: '4px 12px', borderRadius: 10,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, lineHeight: 1, whiteSpace: 'nowrap',
             fontVariantNumeric: 'tabular-nums', fontWeight: 500,
           }}>
             {fixedFeesActiveCount}/{fixedFeesTotalCount} áp dụng
@@ -357,8 +357,9 @@ export function ExportTemplate(props: ExportTemplateProps) {
           </div>
           <div style={{
             marginLeft: 'auto', fontSize: 11, color: '#1F5C8C',
-            background: '#E6F1FB', padding: '3px 10px', borderRadius: 10,
-            display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+            background: '#E6F1FB', padding: '4px 12px', borderRadius: 10,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, lineHeight: 1, whiteSpace: 'nowrap',
             fontVariantNumeric: 'tabular-nums', fontWeight: 500,
           }}>
             {variableFeesActiveCount}/{variableFeesTotalCount} áp dụng
