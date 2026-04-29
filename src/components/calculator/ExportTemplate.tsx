@@ -225,12 +225,11 @@ export function ExportTemplate(props: ExportTemplateProps) {
             {fmtVND(results.profit)}
           </div>
           <span style={{
-            ...NUMERIC_STYLE,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             background: pillBg, color: pillColor,
-            padding: '4px 12px', borderRadius: 999,
+            height: 26, padding: '0 12px', borderRadius: 999,
             fontSize: 14, fontWeight: 500, lineHeight: 1,
-            flexShrink: 0, whiteSpace: 'nowrap',
+            flexShrink: 0, whiteSpace: 'nowrap', letterSpacing: 0,
           }}>
             {pillSign}{Math.abs(results.profitPct).toFixed(2)}%
           </span>
@@ -323,10 +322,10 @@ export function ExportTemplate(props: ExportTemplateProps) {
           </div>
           <div style={{
             marginLeft: 'auto', fontSize: 11, color: '#854F0B',
-            background: '#FAEEDA', padding: '4px 12px', borderRadius: 10,
+            background: '#FAEEDA', height: 22, padding: '0 12px', borderRadius: 11,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0, lineHeight: 1, whiteSpace: 'nowrap',
-            fontVariantNumeric: 'tabular-nums', fontWeight: 500,
+            fontWeight: 500, letterSpacing: 0,
           }}>
             {fixedFeesActiveCount}/{fixedFeesTotalCount} áp dụng
           </div>
@@ -357,10 +356,10 @@ export function ExportTemplate(props: ExportTemplateProps) {
           </div>
           <div style={{
             marginLeft: 'auto', fontSize: 11, color: '#1F5C8C',
-            background: '#E6F1FB', padding: '4px 12px', borderRadius: 10,
+            background: '#E6F1FB', height: 22, padding: '0 12px', borderRadius: 11,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0, lineHeight: 1, whiteSpace: 'nowrap',
-            fontVariantNumeric: 'tabular-nums', fontWeight: 500,
+            fontWeight: 500, letterSpacing: 0,
           }}>
             {variableFeesActiveCount}/{variableFeesTotalCount} áp dụng
           </div>
