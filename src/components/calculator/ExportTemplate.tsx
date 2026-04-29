@@ -322,7 +322,8 @@ export function ExportTemplate(props: ExportTemplateProps) {
           </div>
           <div style={{
             marginLeft: 'auto', fontSize: 11, color: '#854F0B',
-            background: '#FAEEDA', height: 22, padding: '0 12px', borderRadius: 11,
+            background: '#FAEEDA', boxSizing: 'border-box',
+            height: 22, padding: '0 12px 4px', borderRadius: 11,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0, lineHeight: 1, whiteSpace: 'nowrap',
             fontWeight: 500, letterSpacing: 0,
@@ -356,7 +357,8 @@ export function ExportTemplate(props: ExportTemplateProps) {
           </div>
           <div style={{
             marginLeft: 'auto', fontSize: 11, color: '#1F5C8C',
-            background: '#E6F1FB', height: 22, padding: '0 12px', borderRadius: 11,
+            background: '#E6F1FB', boxSizing: 'border-box',
+            height: 22, padding: '0 12px 4px', borderRadius: 11,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0, lineHeight: 1, whiteSpace: 'nowrap',
             fontWeight: 500, letterSpacing: 0,
