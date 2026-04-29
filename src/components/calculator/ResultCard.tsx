@@ -4,7 +4,7 @@ import { ProfitGauge } from './ProfitGauge'
 import { AlertBadges, computeAlerts } from './AlertBadges'
 import { SaveResultDialog } from './SaveResultDialog'
 import { ShareLinkDialog } from './ShareLinkDialog'
-import { ExportTemplate, type ExportFee, type GaugeLevel } from './ExportTemplate'
+import { ExportTemplate, type ExportFee } from './ExportTemplate'
 import { fmtVND, fmtNum, fmtPct } from '@/lib/utils'
 import { useHasFeature } from '@/hooks/useHasFeature'
 import { exportTemplateAsPNG, buildExportFilename } from '@/lib/export-image'
@@ -55,14 +55,6 @@ function Metric({ label, value, divider }: { label: string; value: string; divid
       }}>{value}</div>
     </div>
   )
-}
-
-function gaugeLevelFor(profitPct: number): GaugeLevel {
-  if (profitPct < 0) return 'loss'
-  if (profitPct < 1) return 'breakeven'
-  if (profitPct < 10) return 'thin'
-  if (profitPct < 25) return 'good'
-  return 'excellent'
 }
 
 function toExportFee(f: Fee, revenue: number): ExportFee {
@@ -172,7 +164,6 @@ export function ResultCard({
         businessType={businessTypeLabel}
         inputs={{ costPrice, sellPrice: revenue }}
         results={{ profit, profitPct, totalCost: feeTotal, costPct }}
-        gaugeLevel={gaugeLevelFor(profitPct)}
         fixedFees={activeFixed}
         variableFees={activeVar}
         totalFixedFees={totalFixed}

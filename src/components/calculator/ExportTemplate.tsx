@@ -2,8 +2,8 @@
 // App UI 3-cột giữ nguyên — template này chỉ render khi user click export.
 
 import { fmtVND } from '@/lib/utils'
-
-export type GaugeLevel = 'loss' | 'breakeven' | 'thin' | 'good' | 'excellent'
+import { segmentForPct } from '@/lib/fees'
+import { GAUGE_FLEX, getGaugePointerPct } from '@/lib/gauge-utils'
 
 export interface ExportFee {
   id: string
@@ -20,7 +20,6 @@ export interface ExportTemplateProps {
   businessType: string
   inputs: { costPrice: number; sellPrice: number }
   results: { profit: number; profitPct: number; totalCost: number; costPct: number }
-  gaugeLevel: GaugeLevel
   fixedFees: ExportFee[]
   variableFees: ExportFee[]
   totalFixedFees: number
@@ -33,20 +32,19 @@ export interface ExportTemplateProps {
 }
 
 interface SegConfig {
-  id: GaugeLevel
   label: string
   active: string
   inactive: string
   labelActive: string
-  position: number
 }
 
+// Index 0..4 phải khớp GAUGE_SEGMENTS trong lib/fees.ts (Lỗ → Rất tốt).
 const SEG_CONFIG: SegConfig[] = [
-  { id: 'loss',       label: 'Lỗ',        active: '#F0997B', inactive: '#FCEBEB', labelActive: '#A82928', position: 10 },
-  { id: 'breakeven',  label: 'Hòa vốn',   active: '#B4B2A9', inactive: '#F1EFE8', labelActive: '#5F5E5A', position: 30 },
-  { id: 'thin',       label: 'Lãi mỏng',  active: '#EF9F27', inactive: '#FAEEDA', labelActive: '#854F0B', position: 50 },
-  { id: 'good',       label: 'Lãi tốt',   active: '#97C459', inactive: '#EAF3DE', labelActive: '#3F6B14', position: 70 },
-  { id: 'excellent',  label: 'Rất tốt',   active: '#1D9E75', inactive: '#E1F5EE', labelActive: '#0F6E56', position: 90 },
+  { label: 'Lỗ',        active: '#F0997B', inactive: '#FCEBEB', labelActive: '#A82928' },
+  { label: 'Hòa vốn',   active: '#B4B2A9', inactive: '#F1EFE8', labelActive: '#5F5E5A' },
+  { label: 'Lãi mỏng',  active: '#EF9F27', inactive: '#FAEEDA', labelActive: '#854F0B' },
+  { label: 'Lãi tốt',   active: '#97C459', inactive: '#EAF3DE', labelActive: '#3F6B14' },
+  { label: 'Rất tốt',   active: '#1D9E75', inactive: '#E1F5EE', labelActive: '#0F6E56' },
 ]
 
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
@@ -59,13 +57,16 @@ function formatRate(fee: ExportFee): string {
 function FeeRow({ fee }: { fee: ExportFee }) {
   return (
     <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12,
       padding: '7px 0', borderBottom: '0.5px solid #F1EFE8', fontSize: 13,
     }}>
-      <div style={{ color: '#2C2C2A' }}>
+      <div style={{ color: '#2C2C2A', minWidth: 0, flex: 1 }}>
         {fee.name} <span style={{ color: '#888780', fontSize: 12 }}>({formatRate(fee)})</span>
       </div>
-      <div style={{ color: '#2C2C2A', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{
+        color: '#2C2C2A', fontWeight: 500,
+        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0,
+      }}>
         {fmtVND(fee.amount)}
       </div>
     </div>
@@ -75,13 +76,16 @@ function FeeRow({ fee }: { fee: ExportFee }) {
 function FeeTotalRow({ label, amount, accent }: { label: string; amount: number; accent: string }) {
   return (
     <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12,
       marginTop: 4, paddingTop: 12, paddingBottom: 4,
       borderTop: '1px solid #D3D1C7',
       fontSize: 14, fontWeight: 500,
     }}>
-      <div style={{ color: accent }}>{label}</div>
-      <div style={{ color: accent, fontVariantNumeric: 'tabular-nums' }}>{fmtVND(amount)}</div>
+      <div style={{ color: accent, minWidth: 0, flex: 1 }}>{label}</div>
+      <div style={{
+        color: accent, fontVariantNumeric: 'tabular-nums',
+        whiteSpace: 'nowrap', flexShrink: 0,
+      }}>{fmtVND(amount)}</div>
     </div>
   )
 }
@@ -95,16 +99,17 @@ function FlowRow({ label, value, color, sign, bold, size = 13 }: {
 }) {
   return (
     <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12,
       padding: '6px 0', fontSize: size,
     }}>
-      <div style={{ color: color ?? '#2C2C2A', fontWeight: bold ? 500 : 400 }}>
+      <div style={{ color: color ?? '#2C2C2A', fontWeight: bold ? 500 : 400, minWidth: 0, flex: 1 }}>
         {sign ? <span style={{ marginRight: 6, color: '#7A6038' }}>{sign}</span> : null}
         {label}
       </div>
       <div style={{
         color: color ?? '#2C2C2A', fontWeight: bold ? 500 : 400,
         fontVariantNumeric: 'tabular-nums',
+        whiteSpace: 'nowrap', flexShrink: 0,
       }}>
         {fmtVND(value)}
       </div>
@@ -115,7 +120,7 @@ function FlowRow({ label, value, color, sign, bold, size = 13 }: {
 export function ExportTemplate(props: ExportTemplateProps) {
   const {
     productName, category, shopType, businessType,
-    inputs, results, gaugeLevel,
+    inputs, results,
     fixedFees, variableFees,
     totalFixedFees, totalVariableFees,
     fixedFeesActiveCount, fixedFeesTotalCount,
@@ -133,7 +138,9 @@ export function ExportTemplate(props: ExportTemplateProps) {
   const fixedPct = inputs.sellPrice > 0 ? (totalFixedFees / inputs.sellPrice * 100) : 0
   const varPct = inputs.sellPrice > 0 ? (totalVariableFees / inputs.sellPrice * 100) : 0
 
-  const activeSeg = SEG_CONFIG.find(s => s.id === gaugeLevel)!
+  // Tỷ lệ thực giống ProfitGauge — ngưỡng GAUGE_SEGMENTS, scale [-10, 30].
+  const activeIndex = segmentForPct(results.profitPct)
+  const pointerPct = getGaugePointerPct(results.profitPct)
 
   return (
     <div style={{
@@ -182,28 +189,31 @@ export function ExportTemplate(props: ExportTemplateProps) {
           fontSize: 12, letterSpacing: '0.5px', color: '#0F6E56',
           textTransform: 'uppercase', marginBottom: 8, fontWeight: 500,
         }}>LỢI NHUẬN RÒNG</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
           <div style={{
             fontSize: 32, fontWeight: 500, color: profitColor,
             fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+            lineHeight: 1.1,
           }}>
             {fmtVND(results.profit)}
           </div>
           <div style={{
+            display: 'inline-flex', alignItems: 'center',
             background: pillBg, color: pillColor,
             padding: '4px 10px', borderRadius: 20,
             fontSize: 14, fontWeight: 500, fontVariantNumeric: 'tabular-nums',
+            flexShrink: 0, whiteSpace: 'nowrap',
           }}>
             {pillSign}{Math.abs(results.profitPct).toFixed(2)}%
           </div>
         </div>
 
-        {/* Gauge */}
-        <div style={{ position: 'relative', paddingTop: 14, marginTop: 14 }}>
+        {/* Gauge — chia theo ngưỡng + pointer theo tỷ lệ thực */}
+        <div style={{ position: 'relative', paddingTop: 16, marginTop: 14 }}>
           {/* Triangle pointer */}
           <div style={{
             position: 'absolute', top: 0,
-            left: `${activeSeg.position}%`,
+            left: `${pointerPct}%`,
             transform: 'translateX(-50%)',
             width: 14, height: 14, lineHeight: 0,
           }}>
@@ -212,30 +222,30 @@ export function ExportTemplate(props: ExportTemplateProps) {
             </svg>
           </div>
 
-          {/* Bar */}
+          {/* Bar — flex theo GAUGE_FLEX */}
           <div style={{
-            display: 'flex', gap: 4, height: 10,
+            display: 'flex', gap: 2, height: 10,
             borderRadius: 5, overflow: 'hidden',
           }}>
-            {SEG_CONFIG.map(seg => (
-              <div key={seg.id} style={{
-                flex: 1,
-                background: seg.id === gaugeLevel ? seg.active : seg.inactive,
+            {SEG_CONFIG.map((seg, i) => (
+              <div key={i} style={{
+                flex: GAUGE_FLEX[i],
+                background: i === activeIndex ? seg.active : seg.inactive,
                 borderRadius: 5,
               }} />
             ))}
           </div>
 
-          {/* Labels */}
+          {/* Labels — cùng flex weight để label canh tâm dưới segment tương ứng */}
           <div style={{
-            display: 'flex', gap: 4, marginTop: 8,
+            display: 'flex', gap: 2, marginTop: 8,
             fontSize: 11, textAlign: 'center',
           }}>
-            {SEG_CONFIG.map(seg => (
-              <div key={seg.id} style={{
-                flex: 1,
-                color: seg.id === gaugeLevel ? seg.labelActive : '#B4B2A9',
-                fontWeight: seg.id === gaugeLevel ? 500 : 400,
+            {SEG_CONFIG.map((seg, i) => (
+              <div key={i} style={{
+                flex: GAUGE_FLEX[i],
+                color: i === activeIndex ? seg.labelActive : '#B4B2A9',
+                fontWeight: i === activeIndex ? 500 : 400,
               }}>
                 {seg.label}
               </div>
@@ -244,9 +254,9 @@ export function ExportTemplate(props: ExportTemplateProps) {
         </div>
       </div>
 
-      {/* SECTION 4 — 4 KPI cards */}
+      {/* SECTION 4 — 4 KPI cards (2x2 đều width) */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
+        display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10,
         margin: '0 28px 24px',
       }}>
         {[
@@ -257,6 +267,7 @@ export function ExportTemplate(props: ExportTemplateProps) {
         ].map((kpi, i) => (
           <div key={i} style={{
             background: '#F1EFE8', borderRadius: 8, padding: '14px 16px',
+            minWidth: 0,
           }}>
             <div style={{
               fontSize: 11, color: '#5F5E5A', textTransform: 'uppercase',
@@ -265,6 +276,7 @@ export function ExportTemplate(props: ExportTemplateProps) {
             <div style={{
               fontSize: 18, fontWeight: 500, color: '#2C2C2A',
               fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>{kpi.value}</div>
           </div>
         ))}
@@ -281,8 +293,10 @@ export function ExportTemplate(props: ExportTemplateProps) {
             PHÍ CỐ ĐỊNH (Phí sàn Shopee)
           </div>
           <div style={{
-            marginLeft: 'auto', fontSize: 11, color: '#5F5E5A',
-            background: '#FAEEDA', padding: '2px 8px', borderRadius: 10,
+            marginLeft: 'auto', fontSize: 11, color: '#854F0B',
+            background: '#FAEEDA', padding: '3px 10px', borderRadius: 10,
+            display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+            fontVariantNumeric: 'tabular-nums', fontWeight: 500,
           }}>
             {fixedFeesActiveCount}/{fixedFeesTotalCount} áp dụng
           </div>
@@ -312,8 +326,10 @@ export function ExportTemplate(props: ExportTemplateProps) {
             PHÍ BIẾN ĐỔI (Chi phí ngoài sàn)
           </div>
           <div style={{
-            marginLeft: 'auto', fontSize: 11, color: '#5F5E5A',
-            background: '#E6F1FB', padding: '2px 8px', borderRadius: 10,
+            marginLeft: 'auto', fontSize: 11, color: '#1F5C8C',
+            background: '#E6F1FB', padding: '3px 10px', borderRadius: 10,
+            display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+            fontVariantNumeric: 'tabular-nums', fontWeight: 500,
           }}>
             {variableFeesActiveCount}/{variableFeesTotalCount} áp dụng
           </div>
