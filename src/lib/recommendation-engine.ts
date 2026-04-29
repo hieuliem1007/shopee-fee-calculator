@@ -68,11 +68,15 @@ export interface RecommendationOutput {
 
 // ── Pure formulas ────────────────────────────────────────────────
 
-/** Tách phí cố định thành 2 phần: flat (VND) và pct (%). Chỉ tính fee on. */
-function splitFixedFees(fixedFees: Fee[]) {
+/**
+ * Tách TẤT CẢ phí thành 2 phần theo KIND: flat (VND) và pct (decimal rate).
+ * KHÔNG phân biệt category — vì "kind" là tính chất toán học, "category" chỉ là nhóm UI.
+ * Vd: Vận hành/đơn (kind=flat, category=shopee_variable) phải vào flatSum.
+ */
+function splitAllFeesByKind(fees: Fee[]) {
   let flatSum = 0
   let pctSum = 0
-  for (const f of fixedFees) {
+  for (const f of fees) {
     if (!f.on) continue
     if (f.kind === 'flat') flatSum += f.rate
     else pctSum += f.rate
@@ -80,24 +84,20 @@ function splitFixedFees(fixedFees: Fee[]) {
   return { flatSum, pctSum }
 }
 
-function sumPctVarFees(varFees: Fee[]): number {
-  return varFees.reduce((s, f) => s + (f.on && f.kind === 'pct' ? f.rate : 0), 0)
-}
-
 /**
- * P = F / (1 - k) với F = costPrice + flat fixed; k = pctVar + pctFixed + targetMargin.
+ * P = F / (1 - k) với F = costPrice + tất cả flat fees; k = tất cả pct rates + targetMargin.
+ * Phân loại theo KIND, không phân loại theo category (xem splitAllFeesByKind).
  * Nếu k >= 1 → infeasible (Infinity).
  * Khi targetMargin = 0 → giá hòa vốn.
  */
 export function computePTarget(
   costPrice: number,
-  fixedFlatFees: number,
-  variablePercentSum: number,
-  fixedPercentSum: number,
+  flatFeesSum: number,
+  percentRatesSum: number,
   targetMargin: number,
 ): number {
-  const F = costPrice + fixedFlatFees
-  const k = variablePercentSum + fixedPercentSum + targetMargin
+  const F = costPrice + flatFeesSum
+  const k = percentRatesSum + targetMargin
   if (k >= 1) return Infinity
   return F / (1 - k)
 }
@@ -332,8 +332,10 @@ export function generateRecommendation(
 ): RecommendationOutput {
   const targetMargin = ctx.targetMargin ?? 0.15
 
-  const { flatSum: fixedFlat, pctSum: fixedPct } = splitFixedFees(ctx.fixedFees)
-  const varPct = sumPctVarFees(ctx.varFees)
+  // Phân loại theo KIND trên TOÀN BỘ fees (cả fixed + variable).
+  // Bug cũ: splitFixedFees(fixedFees) bỏ sót flat fees thuộc panel variable
+  // (vd Vận hành/đơn 4.000đ kind=flat category=shopee_variable) → F thiếu.
+  const { flatSum, pctSum } = splitAllFeesByKind([...ctx.fixedFees, ...ctx.varFees])
 
   // Tầng 1 — Diagnosis
   const state = diagnoseState(ctx.profit, ctx.profitPct)
@@ -360,7 +362,7 @@ export function generateRecommendation(
   }
 
   // Tầng 2 — Goal
-  const pTarget = computePTarget(ctx.costPrice, fixedFlat, varPct, fixedPct, targetMargin)
+  const pTarget = computePTarget(ctx.costPrice, flatSum, pctSum, targetMargin)
   const pathAFeasible = Number.isFinite(pTarget) && pTarget > 0
   const increasePct = pathAFeasible && ctx.sellPrice > 0
     ? ((pTarget - ctx.sellPrice) / ctx.sellPrice) * 100
@@ -413,7 +415,7 @@ export function generateRecommendation(
   )
 
   // Break-even price (margin = 0)
-  const breakEvenPrice = computePTarget(ctx.costPrice, fixedFlat, varPct, fixedPct, 0)
+  const breakEvenPrice = computePTarget(ctx.costPrice, flatSum, pctSum, 0)
 
   return {
     diagnosis: {
