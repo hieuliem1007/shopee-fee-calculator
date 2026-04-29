@@ -75,7 +75,7 @@ function FeeRow({ fee }: { fee: ExportFee }) {
     }}>
       <div style={{
         color: '#2C2C2A', flex: 1, minWidth: 0,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        whiteSpace: 'nowrap',
       }}>
         {fee.name} <span style={{ color: '#888780', fontSize: 12 }}>({formatRate(fee)})</span>
       </div>
@@ -101,7 +101,7 @@ function FeeTotalRow({ label, amount, accent }: { label: string; amount: number;
     }}>
       <div style={{
         color: accent, flex: 1, minWidth: 0,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        whiteSpace: 'nowrap',
       }}>{label}</div>
       <div style={{
         ...NUMERIC_STYLE,
@@ -127,7 +127,7 @@ function FlowRow({ label, value, color, sign, bold, size = 13 }: {
       <div style={{
         color: color ?? '#2C2C2A', fontWeight: bold ? 500 : 400,
         flex: 1, minWidth: 0,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        whiteSpace: 'nowrap',
       }}>
         {sign ? <span style={{ marginRight: 6, color: '#7A6038' }}>{sign}</span> : null}
         {label}
@@ -306,7 +306,7 @@ export function ExportTemplate(props: ExportTemplateProps) {
             <div style={{
               ...NUMERIC_STYLE,
               fontSize: 18, fontWeight: 500, color: '#2C2C2A',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}>{kpi.value}</div>
           </div>
         ))}
