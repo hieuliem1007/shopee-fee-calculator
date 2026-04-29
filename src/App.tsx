@@ -33,6 +33,7 @@ import { UserProfilePage } from './pages/app/UserProfilePage'
 import { SavedResultDetailPage } from './pages/app/SavedResultDetailPage'
 
 // Admin pages
+import { AdminOverviewPage } from './pages/admin/AdminOverviewPage'
 import { PendingUsersPage } from './pages/admin/PendingUsersPage'
 import { UserListPage } from './pages/admin/UserListPage'
 import { UserDetailPage } from './pages/admin/UserDetailPage'
@@ -81,7 +82,7 @@ export default function App() {
 
           {/* Admin — requires is_admin */}
           <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
-            <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+            <Route path="/admin" element={<AdminOverviewPage />} />
             <Route path="/admin/users" element={<UserListPage />} />
             <Route path="/admin/users/pending" element={<PendingUsersPage />} />
             <Route path="/admin/users/:id" element={<UserDetailPage />} />
