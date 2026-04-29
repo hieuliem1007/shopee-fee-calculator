@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Calculator, LayoutDashboard, User, LogOut, Lock } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { Footer } from '@/components/layout/Footer'
 
 const NAV = [
   { path: '/app', icon: LayoutDashboard, label: 'Dashboard', exact: true },
@@ -104,8 +105,11 @@ export function AppLayout() {
       </aside>
 
       {/* Main content */}
-      <main style={{ flex: 1, overflowY: 'auto' }}>
-        <Outlet />
+      <main style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1 }}>
+          <Outlet />
+        </div>
+        <Footer />
       </main>
     </div>
   )

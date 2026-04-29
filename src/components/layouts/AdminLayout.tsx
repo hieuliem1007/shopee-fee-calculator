@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Users, Clock, DollarSign, Settings, LogOut, LayoutDashboard, Eye } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { Footer } from '@/components/layout/Footer'
 
 const NAV = [
   { path: '/admin', icon: LayoutDashboard, label: 'Tổng quan', exact: true },
@@ -77,8 +78,11 @@ export function AdminLayout() {
         </div>
       </aside>
 
-      <main style={{ flex: 1, overflowY: 'auto' }}>
-        <Outlet />
+      <main style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1 }}>
+          <Outlet />
+        </div>
+        <Footer />
       </main>
     </div>
   )

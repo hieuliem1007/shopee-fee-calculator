@@ -1,28 +1,40 @@
-import { LogoMark } from './TopNav'
+import { Link } from 'react-router-dom'
+
+const ZALO_LINK = 'https://zalo.me/0901234567'
 
 export function Footer() {
   return (
     <footer style={{
-      marginTop: 48, padding: '28px 0 40px',
-      borderTop: '1px solid #EFEAE0', textAlign: 'center',
+      borderTop: '1px solid #E5E5E0',
+      padding: '20px 28px',
+      background: 'transparent',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      flexWrap: 'wrap', gap: 12,
+      fontSize: 13, color: '#6B6B65',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <LogoMark size={22} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#1A1A1A' }}>E-Dream</span>
+      <div>
+        Powered by <strong style={{ color: '#1A1A1A', fontWeight: 600 }}>E-Dream Tools</strong>
+        {' · '}
+        <a
+          href="https://edream.vn" target="_blank" rel="noopener noreferrer"
+          style={{ color: '#6B6B65', textDecoration: 'none' }}
+        >
+          edream.vn
+        </a>
       </div>
-      <div style={{ fontSize: 12, color: '#8A8A82' }}>
-        Bản quyền © Nguyễn Hiếu Liêm — edream.vn
-      </div>
-      <div style={{
-        display: 'flex', justifyContent: 'center', gap: 18,
-        fontSize: 12, color: '#6B6B66', marginTop: 10,
-      }}>
-        <a href="#" style={{ color: '#6B6B66', textDecoration: 'none' }}>Về E-Dream</a>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <Link to="/terms" style={linkStyle}>Điều khoản sử dụng</Link>
         <span style={{ color: '#D9D5C8' }}>·</span>
-        <a href="#" style={{ color: '#6B6B66', textDecoration: 'none' }}>Khóa học vận hành Shopee</a>
+        <Link to="/privacy" style={linkStyle}>Chính sách bảo mật</Link>
         <span style={{ color: '#D9D5C8' }}>·</span>
-        <a href="#" style={{ color: '#6B6B66', textDecoration: 'none' }}>Liên hệ</a>
+        <a href={ZALO_LINK} target="_blank" rel="noopener noreferrer" style={linkStyle}>
+          Liên hệ Zalo
+        </a>
       </div>
     </footer>
   )
+}
+
+const linkStyle: React.CSSProperties = {
+  color: '#6B6B65', textDecoration: 'none',
 }
