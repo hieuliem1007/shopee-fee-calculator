@@ -238,10 +238,16 @@ function AddFeeDialog({ onClose, onSuccess, onError }: {
         </div>
 
         <div style={{ marginBottom: 12 }}>
-          <FieldLabel required>Category</FieldLabel>
-          <input type="text" value={form.category}
+          <FieldLabel required>Phân loại phí</FieldLabel>
+          <select value={form.category}
             onChange={e => { setForm(f => ({ ...f, category: e.target.value })); setErrors(p => ({ ...p, category: undefined })) }}
-            placeholder="VD: shopee_fixed, shopee_variable" style={inputStyle(!!errors.category)} />
+            style={{ ...inputStyle(!!errors.category), appearance: 'auto' }}>
+            <option value="shopee_variable">Phí biến đổi (Chi phí ngoài sàn — quảng cáo, voucher shop, vận hành…)</option>
+            <option value="shopee_fixed">Phí cố định (Phí sàn Shopee — thanh toán, hạ tầng, thuế…)</option>
+          </select>
+          <div style={{ fontSize: 11, color: '#8A8A82', marginTop: 4, lineHeight: 1.45 }}>
+            Quyết định panel hiển thị trong Calculator: <strong>Phí cố định</strong> (vàng) hoặc <strong>Phí biến đổi</strong> (xanh).
+          </div>
           {errors.category && <ErrorText>{errors.category}</ErrorText>}
         </div>
 
