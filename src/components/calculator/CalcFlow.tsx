@@ -6,6 +6,9 @@ interface Props {
   fixedTotal: number
   varTotal: number
   profit: number
+  // Calculator dùng sticky trong sidebar grid; Saved/Share single-column
+  // → tắt sticky để không che nội dung phía dưới khi scroll.
+  sticky?: boolean
 }
 
 function Row({ label, value, color, weight = 500, op, divider, accent }: {
@@ -39,7 +42,7 @@ function Row({ label, value, color, weight = 500, op, divider, accent }: {
   )
 }
 
-export function CalcFlow({ revenue, costPrice, fixedTotal, varTotal, profit }: Props) {
+export function CalcFlow({ revenue, costPrice, fixedTotal, varTotal, profit, sticky = true }: Props) {
   const profitColor = profit >= 0 ? '#1D9E75' : '#E24B4A'
   const grossMargin = revenue - costPrice
 
@@ -48,7 +51,8 @@ export function CalcFlow({ revenue, costPrice, fixedTotal, varTotal, profit }: P
       background: 'linear-gradient(180deg, #FFFBF0 0%, #FFFFFF 100%)',
       border: '1px solid #F5E5B8', borderRadius: 14,
       padding: '8px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-      alignSelf: 'start', position: 'sticky', top: 76,
+      alignSelf: 'start',
+      ...(sticky ? { position: 'sticky' as const, top: 76 } : {}),
     }}>
       <div style={{
         fontSize: 10, fontWeight: 600, letterSpacing: '0.1em',

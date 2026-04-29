@@ -167,10 +167,11 @@ function EditableRate({ fee, onRate, onKind, dim, accent }: {
 }
 
 // ── FeeRow ────────────────────────────────────────────────────────
-function FeeRow({ fee, dim, amt, isLast, onToggle, onRate, onKind, onName, onRemove, accent }: {
+function FeeRow({ fee, dim, amt, isLast, onToggle, onRate, onKind, onName, onRemove, accent, readOnly }: {
   fee: Fee; dim: boolean; amt: number; isLast: boolean
   onToggle: () => void; onRate: (v: number) => void; onKind: (k: FeeKind) => void
   onName: (n: string) => void; onRemove: () => void; accent: string
+  readOnly?: boolean
 }) {
   const [hover, setHover] = useState(false)
   return (
@@ -184,14 +185,14 @@ function FeeRow({ fee, dim, amt, isLast, onToggle, onRate, onKind, onName, onRem
         fontSize: 13, fontWeight: 500, color: dim ? '#A8A89E' : '#1A1A1A',
         display: 'flex', alignItems: 'center', gap: 6, minWidth: 0,
       }}>
-        {fee.custom ? (
+        {fee.custom && !readOnly ? (
           <EditableText value={fee.name} onChange={onName} />
         ) : (
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {fee.name}
           </span>
         )}
-        {fee.custom && hover && (
+        {fee.custom && hover && !readOnly && (
           <button onClick={onRemove} title="Xóa" style={{
             width: 20, height: 20, borderRadius: 5, padding: 0,
             background: 'transparent', border: 'none',
@@ -204,7 +205,24 @@ function FeeRow({ fee, dim, amt, isLast, onToggle, onRate, onKind, onName, onRem
         )}
       </div>
       <div>
-        <EditableRate fee={fee} onRate={onRate} onKind={onKind} dim={dim} accent={accent} />
+        {readOnly ? (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center',
+            padding: '4px 9px', borderRadius: 6,
+            fontSize: 12, fontWeight: 600,
+            fontVariantNumeric: 'tabular-nums',
+            background: '#F5F2EA', color: dim ? '#A8A89E' : '#1A1A1A',
+          }}>
+            {fee.kind === 'pct'
+              ? (() => {
+                  const p = +(fee.rate * 100).toFixed(2)
+                  return (p % 1 === 0 ? p.toFixed(0) : p.toString()).replace('.', ',') + '%'
+                })()
+              : fmtNum(fee.rate) + 'đ'}
+          </span>
+        ) : (
+          <EditableRate fee={fee} onRate={onRate} onKind={onKind} dim={dim} accent={accent} />
+        )}
       </div>
       <div style={{ textAlign: 'right', paddingRight: 10 }}>
         <div style={{
@@ -216,7 +234,20 @@ function FeeRow({ fee, dim, amt, isLast, onToggle, onRate, onKind, onName, onRem
           {fee.hint}
         </div>
       </div>
-      <Toggle on={fee.on} onChange={onToggle} />
+      {readOnly ? (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          padding: '3px 9px', borderRadius: 999,
+          fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+          background: fee.on ? '#E1F5EE' : '#F5F2EA',
+          color: fee.on ? '#0F6E56' : '#A8A89E',
+          textTransform: 'uppercase', whiteSpace: 'nowrap',
+        }}>
+          {fee.on ? 'Áp dụng' : 'Tắt'}
+        </span>
+      ) : (
+        <Toggle on={fee.on} onChange={onToggle} />
+      )}
     </div>
   )
 }
@@ -225,28 +256,32 @@ function FeeRow({ fee, dim, amt, isLast, onToggle, onRate, onKind, onName, onRem
 interface FeePanelProps {
   title: string
   fees: Fee[]
-  setFees: (f: Fee[]) => void
+  // setFees không bắt buộc khi readOnly. Nội dung không đổi → có thể truyền noop.
+  setFees?: (f: Fee[]) => void
   revenue: number
   color: string
   accentBg: string
+  readOnly?: boolean
 }
 
-export function FeePanel({ title, fees, setFees, revenue, color, accentBg }: FeePanelProps) {
+export function FeePanel({ title, fees, setFees, revenue, color, accentBg, readOnly }: FeePanelProps) {
+  const noop = () => {}
+  const updateFees = setFees ?? noop
   const subtotal = fees.reduce((s, f) => s + computeFee(f, revenue), 0)
   const subPctRev = revenue > 0 ? (subtotal / revenue) * 100 : 0
   const [adding, setAdding] = useState(false)
 
-  const toggle = (id: string) => setFees(fees.map(f => f.id === id ? { ...f, on: !f.on } : f))
-  const updateRate = (id: string, rate: number) => setFees(fees.map(f => f.id === id ? { ...f, rate } : f))
-  const updateName = (id: string, name: string) => setFees(fees.map(f => f.id === id ? { ...f, name } : f))
-  const updateKind = (id: string, kind: FeeKind) => setFees(fees.map(f => {
+  const toggle = (id: string) => updateFees(fees.map(f => f.id === id ? { ...f, on: !f.on } : f))
+  const updateRate = (id: string, rate: number) => updateFees(fees.map(f => f.id === id ? { ...f, rate } : f))
+  const updateName = (id: string, name: string) => updateFees(fees.map(f => f.id === id ? { ...f, name } : f))
+  const updateKind = (id: string, kind: FeeKind) => updateFees(fees.map(f => {
     if (f.id !== id) return f
     return { ...f, kind, rate: kind === 'pct' ? 0.05 : 5000 }
   }))
-  const removeFee = (id: string) => setFees(fees.filter(f => f.id !== id))
+  const removeFee = (id: string) => updateFees(fees.filter(f => f.id !== id))
   const addFee = (kind: FeeKind) => {
     const id = 'custom_' + Date.now()
-    setFees([...fees, { id, name: 'Khoản phí mới', kind, rate: kind === 'pct' ? 0.03 : 3000, on: true, hint: 'Tùy chỉnh', custom: true }])
+    updateFees([...fees, { id, name: 'Khoản phí mới', kind, rate: kind === 'pct' ? 0.03 : 3000, on: true, hint: 'Tùy chỉnh', custom: true }])
     setAdding(false)
   }
 
@@ -292,11 +327,13 @@ export function FeePanel({ title, fees, setFees, revenue, color, accentBg }: Fee
             onKind={(k) => updateKind(f.id, k)}
             onName={(n) => updateName(f.id, n)}
             onRemove={() => removeFee(f.id)}
-            accent={color} />
+            accent={color}
+            readOnly={readOnly} />
         ))}
       </div>
 
-      {/* Add fee */}
+      {/* Add fee — ẩn ở readOnly mode */}
+      {!readOnly && (
       <div style={{ padding: '10px 20px 14px', background: '#FAFAF7', borderTop: '1px dashed #E2DDD0' }}>
         {!adding ? (
           <button onClick={() => setAdding(true)} style={{
@@ -334,6 +371,7 @@ export function FeePanel({ title, fees, setFees, revenue, color, accentBg }: Fee
           </div>
         )}
       </div>
+      )}
 
       {/* Subtotal */}
       <div style={{

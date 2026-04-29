@@ -1,19 +1,26 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Loader2, AlertCircle, Clock, Calculator } from 'lucide-react'
+import { Loader2, AlertCircle, Clock, Calculator, Info } from 'lucide-react'
 import { getPublicResult, type PublicResultData } from '@/lib/saved-results'
 import { trackShareLinkViewed } from '@/lib/analytics'
-import { fmtVND, fmtPct } from '@/lib/utils'
+import { fmtVND } from '@/lib/utils'
+import { ResultHero } from '@/components/calculator/ResultHero'
+import { FeePanel } from '@/components/calculator/FeePanel'
+import { CalcFlow } from '@/components/calculator/CalcFlow'
 import { SmartAlerts } from '@/components/calculator/SmartAlerts'
+import { splitFeesFromSnapshot, type FeeSnapshotItem } from '@/lib/fee-snapshot'
+import { computeFee } from '@/lib/fees'
 import type { SmartAlert } from '@/lib/smart-alerts'
 
-interface FeeSnapshotItem {
-  id: string
-  label: string
-  value: number
-  unit: 'percent' | 'vnd'
-  on: boolean
-  custom?: boolean
+const SHOP_TYPE_LABELS: Record<string, string> = {
+  mall: 'Shop Mall',
+  normal: 'Shop thường',
+}
+
+const TAX_MODE_LABELS: Record<string, string> = {
+  hokd: 'Hộ kinh doanh',
+  company: 'Công ty',
+  personal: 'Cá nhân',
 }
 
 export function PublicSharePage() {
@@ -68,7 +75,7 @@ export function PublicSharePage() {
       </header>
 
       <main style={{ flex: 1, padding: '24px 16px' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+        <div style={{ maxWidth: 880, margin: '0 auto' }}>
           {loading && <LoadingState />}
           {!loading && error && <ErrorState message={error} />}
           {!loading && !error && data && <Body data={data} />}
@@ -134,117 +141,119 @@ function ErrorState({ message }: { message: string }) {
 }
 
 function Body({ data }: { data: PublicResultData }) {
-  const inputs = data.inputs as { costPrice?: number; sellPrice?: number; category?: string; categoryLabel?: string }
-  const results = data.results as { feeTotal?: number; profit?: number; profitPct?: number; revenue?: number; alerts?: SmartAlert[] }
-  const fees = (data.fees_snapshot as unknown as FeeSnapshotItem[]) ?? []
+  const inputs = data.inputs as {
+    costPrice?: number; sellPrice?: number; category?: string; categoryLabel?: string
+    shopType?: string; taxMode?: string
+    shopTypeLabel?: string; taxModeLabel?: string
+  }
+  const results = data.results as {
+    feeTotal?: number; profit?: number; profitPct?: number; revenue?: number
+    alerts?: SmartAlert[]
+  }
+  const snapshot = (data.fees_snapshot as unknown as FeeSnapshotItem[]) ?? []
   const savedAlerts = Array.isArray(results.alerts) ? results.alerts : null
 
   const costPrice = Number(inputs.costPrice ?? 0)
   const sellPrice = Number(inputs.sellPrice ?? 0)
+  const revenue = Number(results.revenue ?? sellPrice)
   const categoryLabel = inputs.categoryLabel ?? inputs.category ?? '—'
+  const shopTypeLabel = inputs.shopTypeLabel
+    ?? (inputs.shopType ? SHOP_TYPE_LABELS[inputs.shopType] : null)
+  const taxModeLabel = inputs.taxModeLabel
+    ?? (inputs.taxMode ? TAX_MODE_LABELS[inputs.taxMode] : null)
   const feeTotal = Number(results.feeTotal ?? 0)
   const profit = Number(results.profit ?? 0)
   const profitPct = Number(results.profitPct ?? 0)
-  const profitColor = profit > 0 ? '#1D9E75' : profit < 0 ? '#A82928' : '#C99A0E'
 
   const productName = data.product_name?.trim() || 'Kết quả tính phí'
 
-  // Compute mỗi fee actual amount cho table
-  const activeFees = fees.filter(f => f.on)
-
-  const computeFeeAmount = (f: FeeSnapshotItem) =>
-    f.unit === 'percent' ? sellPrice * (f.value / 100) : f.value
+  const { fixedFees, varFees } = splitFeesFromSnapshot(snapshot)
+  const fixedTotal = fixedFees.reduce((s, f) => s + computeFee(f, revenue), 0)
+  const varTotal = varFees.reduce((s, f) => s + computeFee(f, revenue), 0)
 
   return (
     <div style={{ marginTop: 8 }}>
-      {/* Hero */}
-      <div style={{
-        background: 'linear-gradient(135deg, #FFFBF0 0%, #FFFFFF 60%)',
-        border: '1px solid #F5E5B8', borderRadius: 16,
-        padding: '28px 32px', marginBottom: 18,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(245,184,28,0.06)',
-      }}>
+      {/* Title */}
+      <div style={{ marginBottom: 18 }}>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1A1A1A' }}>
           {productName}
         </h1>
         <div style={{ marginTop: 6, fontSize: 12, color: '#8A8A82' }}>
           Được chia sẻ bởi user của E-Dream Tools
         </div>
-
-        {/* Hero numbers */}
-        <div style={{
-          marginTop: 22, paddingTop: 20, borderTop: '1px solid rgba(0,0,0,0.06)',
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16,
-        }}>
-          <HeroMetric label="Doanh thu" value={fmtVND(sellPrice)} />
-          <HeroMetric label="Lợi nhuận" value={fmtVND(profit)} color={profitColor} big />
-          <HeroMetric label="Tỷ lệ LN" value={fmtPct(profitPct)} color={profitColor} />
-        </div>
       </div>
 
-      {/* Section 1: Thông tin tính phí */}
-      <Section title="Thông tin tính phí">
-        <KV label="Giá vốn" value={fmtVND(costPrice)} />
-        <KV label="Giá bán" value={fmtVND(sellPrice)} />
-        <KV label="Ngành hàng" value={categoryLabel} last />
+      {/* Card "Thông tin sản phẩm" */}
+      <Section title="Thông tin sản phẩm">
+        {categoryLabel !== '—' && <KV label="Ngành hàng" value={categoryLabel} />}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+          <KV label="Giá vốn" value={fmtVND(costPrice)} compact />
+          <KV label="Giá bán" value={fmtVND(sellPrice)} compact />
+        </div>
+        {shopTypeLabel && <KV label="Loại shop" value={shopTypeLabel} />}
+        {taxModeLabel && <KV label="Hình thức kinh doanh" value={taxModeLabel} last />}
       </Section>
 
-      {/* Section 2: Phí áp dụng */}
-      <Section title={`Phí áp dụng (${activeFees.length} khoản)`}>
-        {activeFees.length === 0 ? (
-          <div style={{ padding: '14px 0', fontSize: 13, color: '#A8A89E' }}>
-            Không có phí nào được áp dụng.
-          </div>
-        ) : (
-          <div style={{ border: '1px solid #EFEAE0', borderRadius: 8, overflow: 'hidden' }}>
-            <div style={{
-              display: 'grid', gridTemplateColumns: '2fr 0.8fr 1fr',
-              padding: '9px 12px', background: '#FAFAF7',
-              borderBottom: '1px solid #EFEAE0',
-              fontSize: 11, fontWeight: 600, color: '#8A8A82',
-              textTransform: 'uppercase', letterSpacing: '0.06em',
-            }}>
-              <div>Tên phí</div>
-              <div style={{ textAlign: 'right' }}>{'%/đơn vị'}</div>
-              <div style={{ textAlign: 'right' }}>Số tiền</div>
-            </div>
-            {activeFees.map((f, i) => (
-              <div key={f.id || i} style={{
-                display: 'grid', gridTemplateColumns: '2fr 0.8fr 1fr',
-                padding: '10px 12px', alignItems: 'center',
-                borderBottom: i < activeFees.length - 1 ? '1px solid #F5F2EA' : 'none',
-                fontSize: 13,
-              }}>
-                <div style={{ fontWeight: 500 }}>{f.label}</div>
-                <div style={{ textAlign: 'right', color: '#6B6B66', fontVariantNumeric: 'tabular-nums' }}>
-                  {f.unit === 'percent' ? f.value + '%' : 'VNĐ'}
-                </div>
-                <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  {fmtVND(computeFeeAmount(f))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      {/* Section 3: Kết quả */}
-      <Section title="Kết quả">
-        <KV label="Tổng phí" value={fmtVND(feeTotal)} />
-        <KV
-          label="Lợi nhuận"
-          value={<span style={{ color: profitColor, fontWeight: 600 }}>{fmtVND(profit)}</span>}
+      {/* Hero */}
+      <div style={{ marginBottom: 16 }}>
+        <ResultHero
+          revenue={revenue} costPrice={costPrice} feeTotal={feeTotal}
+          profit={profit} profitPct={profitPct}
+          kind="snapshot"
         />
-        <KV
-          label="Lợi nhuận %"
-          value={<span style={{ color: profitColor, fontWeight: 600 }}>{fmtPct(profitPct)}</span>}
-          last
-        />
-      </Section>
+      </div>
 
+      {/* Smart alerts */}
       {savedAlerts && savedAlerts.length > 0 && (
-        <SmartAlerts hasFeature={true} presetAlerts={savedAlerts} />
+        <div style={{ marginBottom: 16 }}>
+          <SmartAlerts hasFeature={true} presetAlerts={savedAlerts} />
+        </div>
       )}
+
+      {/* 2 panel phí */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)',
+        gap: 16, marginBottom: 16,
+      }}>
+        {fixedFees.length > 0 && (
+          <FeePanel
+            title="Phí cố định"
+            fees={fixedFees} revenue={revenue}
+            color="#F5B81C" accentBg="#FFFBF0"
+            readOnly
+          />
+        )}
+        {varFees.length > 0 && (
+          <FeePanel
+            title="Phí biến đổi"
+            fees={varFees} revenue={revenue}
+            color="#3B82F6" accentBg="#EBF3FE"
+            readOnly
+          />
+        )}
+      </div>
+
+      {/* CalcFlow */}
+      <div style={{ marginBottom: 16 }}>
+        <CalcFlow
+          revenue={revenue} costPrice={costPrice}
+          fixedTotal={fixedTotal} varTotal={varTotal} profit={profit}
+          sticky={false}
+        />
+      </div>
+
+      {/* Snapshot banner */}
+      <div style={{
+        marginBottom: 22, padding: '11px 14px', borderRadius: 10,
+        background: '#FEF9E7', border: '1px solid #FCD34D',
+        fontSize: 12, color: '#92400E', lineHeight: 1.5,
+        display: 'flex', alignItems: 'flex-start', gap: 8,
+      }}>
+        <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+        <span>
+          Đây là <strong>snapshot tại thời điểm lưu</strong>. Phí Shopee hiện tại có thể đã thay đổi.
+        </span>
+      </div>
 
       {/* CTA */}
       <div style={{
@@ -280,7 +289,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div style={{
       background: '#fff', border: '1px solid #EFEAE0', borderRadius: 12,
-      padding: '18px 22px', marginBottom: 14,
+      padding: '18px 22px', marginBottom: 16,
       boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
     }}>
       <div style={{
@@ -294,31 +303,18 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function KV({ label, value, last }: { label: string; value: React.ReactNode; last?: boolean }) {
+function KV({ label, value, last, compact }: {
+  label: string; value: React.ReactNode; last?: boolean; compact?: boolean
+}) {
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: '160px 1fr',
-      padding: '9px 0', borderBottom: last ? 'none' : '1px solid #F5F2EA',
+      display: 'grid', gridTemplateColumns: compact ? '110px 1fr' : '160px 1fr',
+      padding: '9px 0',
+      borderBottom: last ? 'none' : compact ? 'none' : '1px solid #F5F2EA',
       fontSize: 13,
     }}>
       <div style={{ color: '#6B6B66', fontWeight: 500 }}>{label}</div>
       <div style={{ color: '#1A1A1A', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-    </div>
-  )
-}
-
-function HeroMetric({ label, value, color, big }: { label: string; value: string; color?: string; big?: boolean }) {
-  return (
-    <div>
-      <div style={{
-        fontSize: 11, fontWeight: 500, color: '#8A8A82',
-        textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
-      }}>{label}</div>
-      <div style={{
-        fontSize: big ? 26 : 18, fontWeight: 600,
-        color: color ?? '#1A1A1A',
-        fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
-      }}>{value}</div>
     </div>
   )
 }
