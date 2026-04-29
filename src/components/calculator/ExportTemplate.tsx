@@ -33,21 +33,34 @@ export interface ExportTemplateProps {
 
 interface SegConfig {
   label: string
-  active: string
-  inactive: string
+  color: string
   labelActive: string
 }
 
 // Index 0..4 phải khớp GAUGE_SEGMENTS trong lib/fees.ts (Lỗ → Rất tốt).
+// Dùng opacity thay vì 2 màu (active/inactive) — match pattern ProfitGauge,
+// tránh bug pale-color blend với card background (vd Rất tốt #E1F5EE trùng hero bg).
 const SEG_CONFIG: SegConfig[] = [
-  { label: 'Lỗ',        active: '#F0997B', inactive: '#FCEBEB', labelActive: '#A82928' },
-  { label: 'Hòa vốn',   active: '#B4B2A9', inactive: '#F1EFE8', labelActive: '#5F5E5A' },
-  { label: 'Lãi mỏng',  active: '#EF9F27', inactive: '#FAEEDA', labelActive: '#854F0B' },
-  { label: 'Lãi tốt',   active: '#97C459', inactive: '#EAF3DE', labelActive: '#3F6B14' },
-  { label: 'Rất tốt',   active: '#1D9E75', inactive: '#E1F5EE', labelActive: '#0F6E56' },
+  { label: 'Lỗ',        color: '#E24B4A', labelActive: '#A82928' },
+  { label: 'Hòa vốn',   color: '#A8A89E', labelActive: '#5F5E5A' },
+  { label: 'Lãi mỏng',  color: '#F5B81C', labelActive: '#854F0B' },
+  { label: 'Lãi tốt',   color: '#3FB37D', labelActive: '#3F6B14' },
+  { label: 'Rất tốt',   color: '#0A6B4E', labelActive: '#0A6B4E' },
 ]
 
+const INACTIVE_OPACITY = 0.28
+
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+
+// Style chung cho mọi giá trị số/% — đảm bảo tabular-nums render đều,
+// không bị letter-spacing default tạo gap quanh dấu chấm hay dấu %.
+const NUMERIC_STYLE: React.CSSProperties = {
+  fontVariantNumeric: 'tabular-nums',
+  fontFeatureSettings: '"tnum" 1',
+  letterSpacing: 0,
+}
+
+const AMOUNT_COL_MIN_WIDTH = 110
 
 function formatRate(fee: ExportFee): string {
   if (fee.kind === 'pct') return `${(fee.rate * 100).toFixed(2).replace(/\.?0+$/, '')}%`
@@ -57,15 +70,20 @@ function formatRate(fee: ExportFee): string {
 function FeeRow({ fee }: { fee: ExportFee }) {
   return (
     <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12,
+      display: 'flex', alignItems: 'baseline', gap: 12,
       padding: '7px 0', borderBottom: '0.5px solid #F1EFE8', fontSize: 13,
     }}>
-      <div style={{ color: '#2C2C2A', minWidth: 0, flex: 1 }}>
+      <div style={{
+        color: '#2C2C2A', flex: 1, minWidth: 0,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
         {fee.name} <span style={{ color: '#888780', fontSize: 12 }}>({formatRate(fee)})</span>
       </div>
       <div style={{
+        ...NUMERIC_STYLE,
         color: '#2C2C2A', fontWeight: 500,
-        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0,
+        whiteSpace: 'nowrap', flexShrink: 0,
+        minWidth: AMOUNT_COL_MIN_WIDTH, textAlign: 'right',
       }}>
         {fmtVND(fee.amount)}
       </div>
@@ -76,15 +94,19 @@ function FeeRow({ fee }: { fee: ExportFee }) {
 function FeeTotalRow({ label, amount, accent }: { label: string; amount: number; accent: string }) {
   return (
     <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12,
+      display: 'flex', alignItems: 'baseline', gap: 12,
       marginTop: 4, paddingTop: 12, paddingBottom: 4,
       borderTop: '1px solid #D3D1C7',
       fontSize: 14, fontWeight: 500,
     }}>
-      <div style={{ color: accent, minWidth: 0, flex: 1 }}>{label}</div>
       <div style={{
-        color: accent, fontVariantNumeric: 'tabular-nums',
-        whiteSpace: 'nowrap', flexShrink: 0,
+        color: accent, flex: 1, minWidth: 0,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{label}</div>
+      <div style={{
+        ...NUMERIC_STYLE,
+        color: accent, whiteSpace: 'nowrap', flexShrink: 0,
+        minWidth: AMOUNT_COL_MIN_WIDTH, textAlign: 'right',
       }}>{fmtVND(amount)}</div>
     </div>
   )
@@ -99,17 +121,22 @@ function FlowRow({ label, value, color, sign, bold, size = 13 }: {
 }) {
   return (
     <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12,
+      display: 'flex', alignItems: 'baseline', gap: 12,
       padding: '6px 0', fontSize: size,
     }}>
-      <div style={{ color: color ?? '#2C2C2A', fontWeight: bold ? 500 : 400, minWidth: 0, flex: 1 }}>
+      <div style={{
+        color: color ?? '#2C2C2A', fontWeight: bold ? 500 : 400,
+        flex: 1, minWidth: 0,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
         {sign ? <span style={{ marginRight: 6, color: '#7A6038' }}>{sign}</span> : null}
         {label}
       </div>
       <div style={{
+        ...NUMERIC_STYLE,
         color: color ?? '#2C2C2A', fontWeight: bold ? 500 : 400,
-        fontVariantNumeric: 'tabular-nums',
         whiteSpace: 'nowrap', flexShrink: 0,
+        minWidth: AMOUNT_COL_MIN_WIDTH, textAlign: 'right',
       }}>
         {fmtVND(value)}
       </div>
@@ -189,19 +216,19 @@ export function ExportTemplate(props: ExportTemplateProps) {
           fontSize: 12, letterSpacing: '0.5px', color: '#0F6E56',
           textTransform: 'uppercase', marginBottom: 8, fontWeight: 500,
         }}>LỢI NHUẬN RÒNG</div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 }}>
           <div style={{
+            ...NUMERIC_STYLE,
             fontSize: 32, fontWeight: 500, color: profitColor,
-            fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
-            lineHeight: 1.1,
+            lineHeight: 1,
           }}>
             {fmtVND(results.profit)}
           </div>
           <div style={{
-            display: 'inline-flex', alignItems: 'center',
+            ...NUMERIC_STYLE,
             background: pillBg, color: pillColor,
-            padding: '4px 10px', borderRadius: 20,
-            fontSize: 14, fontWeight: 500, fontVariantNumeric: 'tabular-nums',
+            padding: '4px 12px', borderRadius: 999,
+            fontSize: 14, fontWeight: 500, lineHeight: 1,
             flexShrink: 0, whiteSpace: 'nowrap',
           }}>
             {pillSign}{Math.abs(results.profitPct).toFixed(2)}%
@@ -222,7 +249,7 @@ export function ExportTemplate(props: ExportTemplateProps) {
             </svg>
           </div>
 
-          {/* Bar — flex theo GAUGE_FLEX */}
+          {/* Bar — flex theo GAUGE_FLEX, opacity cho inactive segments */}
           <div style={{
             display: 'flex', gap: 2, height: 10,
             borderRadius: 5, overflow: 'hidden',
@@ -230,7 +257,8 @@ export function ExportTemplate(props: ExportTemplateProps) {
             {SEG_CONFIG.map((seg, i) => (
               <div key={i} style={{
                 flex: GAUGE_FLEX[i],
-                background: i === activeIndex ? seg.active : seg.inactive,
+                background: seg.color,
+                opacity: i === activeIndex ? 1 : INACTIVE_OPACITY,
                 borderRadius: 5,
               }} />
             ))}
@@ -274,8 +302,8 @@ export function ExportTemplate(props: ExportTemplateProps) {
               letterSpacing: '0.04em', marginBottom: 4,
             }}>{kpi.label}</div>
             <div style={{
+              ...NUMERIC_STYLE,
               fontSize: 18, fontWeight: 500, color: '#2C2C2A',
-              fontVariantNumeric: 'tabular-nums',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>{kpi.value}</div>
           </div>
