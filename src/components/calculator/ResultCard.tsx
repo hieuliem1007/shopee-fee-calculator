@@ -10,6 +10,7 @@ import { exportTemplateAsPNG, buildExportFilename } from '@/lib/export-image'
 import { exportTemplateAsPDF } from '@/lib/export-pdf'
 import { computeFee } from '@/lib/fees'
 import { computeSmartAlerts } from '@/lib/smart-alerts'
+import { generateRecommendation } from '@/lib/recommendation-engine'
 import { trackEvent } from '@/lib/analytics'
 import type { Fee } from '@/types/fees'
 import type { ToastState } from '@/components/ui/Toast'
@@ -107,7 +108,23 @@ export function ResultCard({
     { revenue, feeTotal, profit, profitPct, costPrice },
     fixedFees, varFees,
   )
-  const results = { feeTotal, profit, profitPct, revenue, alerts: smartAlerts }
+
+  // Snapshot Recommendation vào results.recommendation (M6.8). Saved/Share
+  // render lại snapshot, không recompute để tránh drift theo dữ liệu mới.
+  const fixedTotalForRec = fixedFees.reduce((s, f) => s + computeFee(f, revenue), 0)
+  const varTotalForRec = varFees.reduce((s, f) => s + computeFee(f, revenue), 0)
+  const shopTypeForRec: 'mall' | 'normal' = shopTypeLabel === 'Shop Mall' ? 'mall' : 'normal'
+  const recommendation = generateRecommendation({
+    costPrice, sellPrice: revenue,
+    fixedFees, varFees,
+    revenue, feeTotal,
+    fixedTotal: fixedTotalForRec, varTotal: varTotalForRec,
+    profit, profitPct,
+    shopType: shopTypeForRec,
+    productName, categoryLabel,
+  })
+
+  const results = { feeTotal, profit, profitPct, revenue, alerts: smartAlerts, recommendation }
 
   const handleSaveClick = () => {
     if (!canSave || featureLoading) return

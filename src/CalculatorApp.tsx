@@ -12,7 +12,9 @@ import { InputCard } from './components/calculator/InputCard'
 import { ResultCard } from './components/calculator/ResultCard'
 import { FeePanel } from './components/calculator/FeePanel'
 import { CalcFlow } from './components/calculator/CalcFlow'
-import { DualDonuts, TopFeesBar, RecommendationCard } from './components/calculator/Charts'
+import { DualDonuts, TopFeesBar } from './components/calculator/Charts'
+import { RecommendationCard } from './components/calculator/RecommendationCard'
+import type { RecommendationContext } from './lib/recommendation-engine'
 import { ScenariosSection } from './components/calculator/Scenarios'
 import { useFeeCalculator } from './hooks/useFeeCalculator'
 import { useDbFees, type DbFeesState } from './lib/use-db-fees'
@@ -194,6 +196,19 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
         />
       </div>
 
+      {/* Expert Engine — Phân tích chuyên sâu (M6.8). Render dưới ResultCard, trên FeePanel. */}
+      <RecommendationCard
+        ctx={{
+          costPrice: calc.costPrice, sellPrice: calc.sellPrice,
+          fixedFees: calc.fixedFees, varFees: calc.varFees,
+          revenue: calc.revenue, feeTotal: calc.feeTotal,
+          fixedTotal: calc.fixedTotal, varTotal: calc.varTotal,
+          profit: calc.profit, profitPct: calc.profitPct,
+          shopType: calc.shopType, productName: calc.productName,
+          categoryLabel,
+        } satisfies RecommendationContext}
+      />
+
       <section style={{ marginTop: 28 }}>
         <SectionHeader
           title="Bảng phí chi tiết"
@@ -231,9 +246,6 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
           </div>
         </div>
       </section>
-
-      <RecommendationCard profit={calc.profit} profitPct={calc.profitPct}
-        fixedFees={calc.fixedFees} revenue={calc.revenue} />
 
       {canCompare ? (
         <ScenariosSection scenarios={scenarios} setScenarios={setScenarios}

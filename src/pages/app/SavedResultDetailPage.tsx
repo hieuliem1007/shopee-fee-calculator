@@ -10,9 +10,11 @@ import { ResultHero } from '@/components/calculator/ResultHero'
 import { FeePanel } from '@/components/calculator/FeePanel'
 import { CalcFlow } from '@/components/calculator/CalcFlow'
 import { SmartAlerts } from '@/components/calculator/SmartAlerts'
+import { RecommendationCard } from '@/components/calculator/RecommendationCard'
 import { splitFeesFromSnapshot, type FeeSnapshotItem } from '@/lib/fee-snapshot'
 import { computeFee } from '@/lib/fees'
 import type { SmartAlert } from '@/lib/smart-alerts'
+import type { RecommendationOutput } from '@/lib/recommendation-engine'
 import { Toast, type ToastState } from '@/components/ui/Toast'
 
 const TOOL_LABEL: Record<string, string> = {
@@ -128,9 +130,11 @@ export function SavedResultDetailPage() {
   const results = detail.results as {
     feeTotal?: number; profit?: number; profitPct?: number; revenue?: number
     alerts?: SmartAlert[]
+    recommendation?: RecommendationOutput
   }
   const snapshot = (detail.fees_snapshot as unknown as FeeSnapshotItem[]) ?? []
   const savedAlerts = Array.isArray(results.alerts) ? results.alerts : null
+  const savedRecommendation = results.recommendation ?? null
 
   const costPrice = Number(inputs.costPrice ?? 0)
   const sellPrice = Number(inputs.sellPrice ?? 0)
@@ -233,6 +237,14 @@ export function SavedResultDetailPage() {
       {savedAlerts && savedAlerts.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <SmartAlerts hasFeature={true} presetAlerts={savedAlerts} />
+        </div>
+      )}
+
+      {/* Expert Engine recommendation (snapshot, M6.8). Pre-M6.8 saved
+          không có recommendation field → component return null. */}
+      {savedRecommendation && (
+        <div style={{ marginBottom: 16 }}>
+          <RecommendationCard preset={savedRecommendation} />
         </div>
       )}
 
