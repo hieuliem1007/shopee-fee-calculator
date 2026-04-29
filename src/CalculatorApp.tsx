@@ -1,8 +1,11 @@
 // Original Shopee Fee Calculator UI — served at /app/shopee-calculator
 // Phase 3: data-driven (DB-backed). Per-session load.
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ShopType, TaxMode } from './types/fees'
+import type { Fee } from './types/fees'
 import { trackCalculatorUsed } from './lib/analytics'
+import { supabase } from './lib/supabase'
+import { useAuth } from './contexts/AuthContext'
 import { SectionHeader } from './components/layout/SectionHeader'
 import { Hero } from './components/calculator/Hero'
 import { InputCard } from './components/calculator/InputCard'
@@ -77,14 +80,54 @@ const TAX_MODE_LABELS: Record<TaxMode, string> = {
   personal: 'Cá nhân',
 }
 
+// Auto tax rate theo Hình thức kinh doanh:
+// - HKD: 1.5% (theo quy định Shopee thu hộ thuế)
+// - Công ty: tự khai → mặc định 0% (admin/user vẫn sửa được trong FeePanel)
+const TAX_RATE_FOR_MODE: Record<'hokd' | 'company', number> = {
+  hokd: 0.015,
+  company: 0,
+}
+
 function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
   const calc = useFeeCalculator({
     fixedFees: dbFees.fixedFees,
     varFees: dbFees.varFees,
     categories: dbFees.categories,
   })
+  const { profile } = useAuth()
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [toast, setToast] = useState<ToastState | null>(null)
+
+  // Sync taxMode + shopee_tax rate từ profile.business_type khi mount.
+  // Chỉ chạy 1 lần khi profile sẵn sàng để tránh override edit của user.
+  const businessTypeSyncedRef = useRef(false)
+  useEffect(() => {
+    if (businessTypeSyncedRef.current) return
+    if (!profile?.business_type) return
+    if (profile.business_type !== 'hokd' && profile.business_type !== 'company') return
+    businessTypeSyncedRef.current = true
+    if (profile.business_type !== calc.taxMode) {
+      calc.setTaxMode(profile.business_type as TaxMode)
+      const rate = TAX_RATE_FOR_MODE[profile.business_type]
+      calc.setFixedFees(prev => prev.map(f => f.id === 'shopee_tax' ? { ...f, rate } : f))
+    }
+  }, [profile?.business_type, calc])
+
+  // onChange dropdown: in-memory taxMode + shopee_tax rate + persist DB.
+  // KHÔNG block UI nếu DB update fail (best effort persist).
+  const handleSetTaxMode = useCallback((mode: TaxMode) => {
+    calc.setTaxMode(mode)
+    if (mode === 'hokd' || mode === 'company') {
+      const rate = TAX_RATE_FOR_MODE[mode]
+      calc.setFixedFees((prev: Fee[]) => prev.map(f => f.id === 'shopee_tax' ? { ...f, rate } : f))
+      if (profile?.id) {
+        supabase.from('profiles').update({ business_type: mode }).eq('id', profile.id)
+          .then(({ error }) => {
+            if (error) console.warn('[business_type persist failed]', error.message)
+          })
+      }
+    }
+  }, [calc, profile?.id])
 
   const { hasFeature: canCompare, loading: compareLoading } = useHasFeature('shopee_compare_scenarios')
 
@@ -131,7 +174,7 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
         productName={calc.productName} setProductName={calc.setProductName}
         shopType={calc.shopType} setShopType={calc.setShopType}
         category={calc.category} setCategory={calc.setCategory}
-        taxMode={calc.taxMode} setTaxMode={calc.setTaxMode}
+        taxMode={calc.taxMode} setTaxMode={handleSetTaxMode}
         categories={calc.categories}
       />
 

@@ -189,7 +189,6 @@ export function InputCard({
           options={[
             { id: 'hokd', label: 'Hộ kinh doanh (1,5%)' },
             { id: 'company', label: 'Công ty (tự khai)' },
-            { id: 'personal', label: 'Cá nhân (10%)' },
           ]}
           onChange={setTaxMode}
         />

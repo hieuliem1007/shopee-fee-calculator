@@ -13,6 +13,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export type ProfileStatus = 'pending' | 'active' | 'rejected' | 'suspended' | 'deleted'
 
+export type BusinessType = 'hokd' | 'company'
+
 export interface Profile {
   id: string
   full_name: string
@@ -26,6 +28,7 @@ export interface Profile {
   last_login_at: string | null
   feature_usage_count: number
   is_admin: boolean
+  business_type: BusinessType
   created_at: string
   updated_at: string
   approved_at: string | null
