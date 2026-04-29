@@ -6,7 +6,10 @@ import { SaveResultDialog } from './SaveResultDialog'
 import { ShareLinkDialog } from './ShareLinkDialog'
 import { fmtVND, fmtNum, fmtPct } from '@/lib/utils'
 import { useHasFeature } from '@/hooks/useHasFeature'
-import { exportElementAsPNG, buildExportFilename } from '@/lib/export-image'
+import {
+  exportElementAsPNG, buildExportFilename,
+  createBrandBanner, hideExportElements, restoreHiddenElements,
+} from '@/lib/export-image'
 import { exportElementAsPDF } from '@/lib/export-pdf'
 import { trackEvent } from '@/lib/analytics'
 import type { Fee } from '@/types/fees'
@@ -25,6 +28,7 @@ interface Props {
   categoryLabel: string
   onSaveSuccess?: (resultId: string) => void
   onShowToast?: (toast: ToastState) => void
+  exportRef?: React.RefObject<HTMLDivElement | null>
 }
 
 const btnSec: React.CSSProperties = {
@@ -57,7 +61,7 @@ export function ResultCard({
   revenue, costPrice, feeTotal, profit, profitPct,
   fixedFees, varFees,
   productName, category, categoryLabel,
-  onSaveSuccess, onShowToast,
+  onSaveSuccess, onShowToast, exportRef,
 }: Props) {
   const [hover, setHover] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -134,12 +138,20 @@ export function ResultCard({
     }
   }
 
+  const getExportTarget = (): HTMLElement | null =>
+    exportRef?.current ?? cardRef.current
+
   const handleExportImage = async () => {
-    if (!cardRef.current || !canExportImage || exportImageLoading || exporting) return
+    const target = getExportTarget()
+    if (!target || !canExportImage || exportImageLoading || exporting) return
     setExporting('png')
+    const banner = createBrandBanner()
+    let hidden: ReturnType<typeof hideExportElements> = []
     try {
+      hidden = hideExportElements(target)
+      target.insertBefore(banner, target.firstChild)
       const filename = buildExportFilename(productName, 'png')
-      await exportElementAsPNG(cardRef.current, filename)
+      await exportElementAsPNG(target, filename)
       trackEvent('export_image', {
         event_category: 'engagement',
         tool_id: 'shopee_calculator',
@@ -148,16 +160,23 @@ export function ResultCard({
     } catch {
       onShowToast?.({ kind: 'error', message: 'Lỗi khi tải ảnh, vui lòng thử lại' })
     } finally {
+      if (banner.parentNode) banner.parentNode.removeChild(banner)
+      restoreHiddenElements(hidden)
       setExporting(null)
     }
   }
 
   const handleExportPdf = async () => {
-    if (!cardRef.current || !canExportPdf || exportPdfLoading || exporting) return
+    const target = getExportTarget()
+    if (!target || !canExportPdf || exportPdfLoading || exporting) return
     setExporting('pdf')
+    const banner = createBrandBanner()
+    let hidden: ReturnType<typeof hideExportElements> = []
     try {
+      hidden = hideExportElements(target)
+      target.insertBefore(banner, target.firstChild)
       const filename = buildExportFilename(productName, 'pdf')
-      await exportElementAsPDF(cardRef.current, filename)
+      await exportElementAsPDF(target, filename)
       trackEvent('export_pdf', {
         event_category: 'engagement',
         tool_id: 'shopee_calculator',
@@ -166,6 +185,8 @@ export function ResultCard({
     } catch {
       onShowToast?.({ kind: 'error', message: 'Lỗi khi xuất PDF, vui lòng thử lại' })
     } finally {
+      if (banner.parentNode) banner.parentNode.removeChild(banner)
+      restoreHiddenElements(hidden)
       setExporting(null)
     }
   }
@@ -253,7 +274,7 @@ export function ResultCard({
       <AlertBadges alerts={alerts} />
 
       {/* Action buttons */}
-      <div className="result-actions" style={{
+      <div className="result-actions" data-export-hide style={{
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
         gap: 10, marginTop: 24,
       }}>

@@ -73,6 +73,7 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
   })
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [toast, setToast] = useState<ToastState | null>(null)
+  const exportRef = useRef<HTMLDivElement>(null)
 
   const { hasFeature: canCompare, loading: compareLoading } = useHasFeature('shopee_compare_scenarios')
 
@@ -121,43 +122,46 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
         categories={calc.categories}
       />
 
-      <div style={{ marginTop: 16 }}>
-        <ResultCard
-          revenue={calc.revenue} costPrice={calc.costPrice}
-          feeTotal={calc.feeTotal} profit={calc.profit}
-          profitPct={calc.profitPct}
-          fixedFees={calc.fixedFees} varFees={calc.varFees}
-          productName={calc.productName}
-          category={calc.category}
-          categoryLabel={categoryLabel}
-          onSaveSuccess={handleSaveSuccess}
-          onShowToast={setToast}
-        />
-      </div>
-
-      <section style={{ marginTop: 28 }}>
-        <SectionHeader
-          title="Bảng phí chi tiết"
-          subtitle="Bật/tắt từng khoản, dòng tiền sẽ cập nhật ngay tức thì."
-          right={
-            <button onClick={calc.reset} style={{
-              background: 'transparent', border: 0, padding: '6px 0',
-              color: '#6B6B66', fontSize: 13, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
-            }}>
-              <RefreshCw size={13} /> Reset về mặc định
-            </button>
-          }
-        />
-        <div className="col-3" style={{ marginTop: 16 }}>
-          <FeePanel title="Chi phí cố định" fees={calc.fixedFees} setFees={calc.setFixedFees}
-            revenue={calc.revenue} color="#F5B81C" accentBg="#FAF6E8" />
-          <CalcFlow revenue={calc.revenue} costPrice={calc.costPrice}
-            fixedTotal={calc.fixedTotal} varTotal={calc.varTotal} profit={calc.profit} />
-          <FeePanel title="Chi phí biến đổi" fees={calc.varFees} setFees={calc.setVarFees}
-            revenue={calc.revenue} color="#3B82C4" accentBg="#EAF2FB" />
+      <div ref={exportRef}>
+        <div style={{ marginTop: 16 }}>
+          <ResultCard
+            revenue={calc.revenue} costPrice={calc.costPrice}
+            feeTotal={calc.feeTotal} profit={calc.profit}
+            profitPct={calc.profitPct}
+            fixedFees={calc.fixedFees} varFees={calc.varFees}
+            productName={calc.productName}
+            category={calc.category}
+            categoryLabel={categoryLabel}
+            onSaveSuccess={handleSaveSuccess}
+            onShowToast={setToast}
+            exportRef={exportRef}
+          />
         </div>
-      </section>
+
+        <section style={{ marginTop: 28 }} data-export-section="fees">
+          <SectionHeader
+            title="Bảng phí chi tiết"
+            subtitle="Bật/tắt từng khoản, dòng tiền sẽ cập nhật ngay tức thì."
+            right={
+              <button onClick={calc.reset} data-export-hide style={{
+                background: 'transparent', border: 0, padding: '6px 0',
+                color: '#6B6B66', fontSize: 13, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
+              }}>
+                <RefreshCw size={13} /> Reset về mặc định
+              </button>
+            }
+          />
+          <div className="col-3" style={{ marginTop: 16 }}>
+            <FeePanel title="Chi phí cố định" fees={calc.fixedFees} setFees={calc.setFixedFees}
+              revenue={calc.revenue} color="#F5B81C" accentBg="#FAF6E8" />
+            <CalcFlow revenue={calc.revenue} costPrice={calc.costPrice}
+              fixedTotal={calc.fixedTotal} varTotal={calc.varTotal} profit={calc.profit} />
+            <FeePanel title="Chi phí biến đổi" fees={calc.varFees} setFees={calc.setVarFees}
+              revenue={calc.revenue} color="#3B82C4" accentBg="#EAF2FB" />
+          </div>
+        </section>
+      </div>
 
       <section style={{ marginTop: 28 }}>
         <SectionHeader
