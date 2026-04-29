@@ -11,6 +11,7 @@ import { FeePanel } from './components/calculator/FeePanel'
 import { CalcFlow } from './components/calculator/CalcFlow'
 import { DualDonuts, TopFeesBar, RecommendationCard } from './components/calculator/Charts'
 import { ScenariosSection } from './components/calculator/Scenarios'
+import { SmartAlerts } from './components/calculator/SmartAlerts'
 import { useFeeCalculator } from './hooks/useFeeCalculator'
 import { useDbFees, type DbFeesState } from './lib/use-db-fees'
 import { Toast, type ToastState } from './components/ui/Toast'
@@ -87,6 +88,7 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
   const [toast, setToast] = useState<ToastState | null>(null)
 
   const { hasFeature: canCompare, loading: compareLoading } = useHasFeature('shopee_compare_scenarios')
+  const { hasFeature: canSmartAlerts, loading: smartAlertsLoading } = useHasFeature('shopee_smart_alerts')
 
   const handleApplyScenario = (s: ScData) => calc.applySnapshot(s.snapshot)
 
@@ -150,6 +152,14 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
           onShowToast={setToast}
         />
       </div>
+
+      {!smartAlertsLoading && calc.revenue > 0 && (
+        <SmartAlerts
+          result={{ revenue: calc.revenue, feeTotal: calc.feeTotal, profitPct: calc.profitPct }}
+          varFees={calc.varFees}
+          hasFeature={canSmartAlerts}
+        />
+      )}
 
       <section style={{ marginTop: 28 }}>
         <SectionHeader

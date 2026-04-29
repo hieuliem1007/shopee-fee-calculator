@@ -8,6 +8,8 @@ import { fmtVND, fmtPct } from '@/lib/utils'
 import { relativeTime, daysUntil, expiryLabel } from '@/lib/format'
 import { useHasFeature } from '@/hooks/useHasFeature'
 import { ShareLinkDialog } from '@/components/calculator/ShareLinkDialog'
+import { SmartAlerts } from '@/components/calculator/SmartAlerts'
+import type { SmartAlert } from '@/lib/smart-alerts'
 import { Toast, type ToastState } from '@/components/ui/Toast'
 
 interface FeeSnapshotItem {
@@ -114,8 +116,9 @@ export function SavedResultDetailPage() {
   const isPlaceholder = !detail.product_name?.trim()
   const tool = TOOL_LABEL[detail.tool_id] ?? detail.tool_id
   const inputs = detail.inputs as { costPrice?: number; sellPrice?: number; category?: string; categoryLabel?: string }
-  const results = detail.results as { feeTotal?: number; profit?: number; profitPct?: number; revenue?: number }
+  const results = detail.results as { feeTotal?: number; profit?: number; profitPct?: number; revenue?: number; alerts?: SmartAlert[] }
   const fees = (detail.fees_snapshot as unknown as FeeSnapshotItem[]) ?? []
+  const savedAlerts = Array.isArray(results.alerts) ? results.alerts : null
 
   const costPrice = Number(inputs.costPrice ?? 0)
   const sellPrice = Number(inputs.sellPrice ?? 0)
@@ -215,6 +218,10 @@ export function SavedResultDetailPage() {
           last
         />
       </Section>
+
+      {savedAlerts && savedAlerts.length > 0 && (
+        <SmartAlerts hasFeature={true} presetAlerts={savedAlerts} />
+      )}
 
       {/* Footer info */}
       <div style={{

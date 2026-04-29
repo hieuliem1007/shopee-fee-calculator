@@ -1,21 +1,21 @@
-import { AlertTriangle, CheckCircle } from 'lucide-react'
-import { computeFee } from '@/lib/fees'
+// AlertBadges chỉ giữ DANGER (profit < 0) — rule duy nhất không trùng
+// scope với SmartAlerts (M6.3). Warning fee >=12% revenue + good
+// profitPct >=15 đã chuyển sang SmartAlerts (rule khác ngưỡng + có
+// feature gate riêng).
+
+import { AlertTriangle } from 'lucide-react'
 import { fmtVND } from '@/lib/utils'
-import type { Fee } from '@/types/fees'
 
 interface Alert {
-  tone: 'danger' | 'warn' | 'good'
+  tone: 'danger'
   msg: string
 }
 
 export function computeAlerts(params: {
   revenue: number
   profit: number
-  profitPct: number
-  fixedFees: Fee[]
-  varFees: Fee[]
 }): Alert[] {
-  const { revenue, profit, profitPct, fixedFees, varFees } = params
+  const { revenue, profit } = params
   const alerts: Alert[] = []
   if (revenue <= 0) return alerts
 
@@ -28,34 +28,11 @@ export function computeAlerts(params: {
     })
   }
 
-  const allFees = [...fixedFees, ...varFees]
-  for (const f of allFees) {
-    if (!f.on) continue
-    const amt = computeFee(f, revenue)
-    const pct = (amt / revenue) * 100
-    if (pct >= 12) {
-      alerts.push({
-        tone: 'warn',
-        msg: `${f.name} đang chiếm ${pct.toFixed(1).replace('.', ',')}% doanh thu — cao bất thường, cân nhắc tắt để tăng lợi nhuận thêm ${fmtVND(amt)}/đơn`,
-      })
-    }
-  }
-
-  if (profitPct >= 15) {
-    const headroom = Math.max(1, Math.floor((profitPct - 10) / 1.5))
-    alerts.push({
-      tone: 'good',
-      msg: `Lợi nhuận tốt! Có thể tăng ngân sách quảng cáo thêm ~${headroom}% để scale đơn mà vẫn có lãi`,
-    })
-  }
-
   return alerts
 }
 
 const ALERT_STYLES = {
   danger: { bg: '#FEF2F2', border: '#FCA5A5', icon: '#DC2626', text: '#991B1B' },
-  warn:   { bg: '#FFFBEB', border: '#FCD34D', icon: '#D97706', text: '#92400E' },
-  good:   { bg: '#F0FDF4', border: '#86EFAC', icon: '#16A34A', text: '#166534' },
 }
 
 function AlertBadge({ tone, msg }: Alert) {
@@ -67,10 +44,7 @@ function AlertBadge({ tone, msg }: Alert) {
       background: s.bg, border: `1px solid ${s.border}`,
       fontSize: 13, color: s.text, lineHeight: 1.45, minHeight: 40,
     }}>
-      {tone === 'good'
-        ? <CheckCircle size={16} color={s.icon} strokeWidth={2} style={{ flexShrink: 0 }} />
-        : <AlertTriangle size={16} color={s.icon} strokeWidth={2} style={{ flexShrink: 0 }} />
-      }
+      <AlertTriangle size={16} color={s.icon} strokeWidth={2} style={{ flexShrink: 0 }} />
       <span style={{ fontWeight: 500 }}>{msg}</span>
     </div>
   )

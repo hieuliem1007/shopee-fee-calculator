@@ -10,6 +10,7 @@ import { useHasFeature } from '@/hooks/useHasFeature'
 import { exportTemplateAsPNG, buildExportFilename } from '@/lib/export-image'
 import { exportTemplateAsPDF } from '@/lib/export-pdf'
 import { computeFee } from '@/lib/fees'
+import { computeSmartAlerts } from '@/lib/smart-alerts'
 import { trackEvent } from '@/lib/analytics'
 import type { Fee } from '@/types/fees'
 import type { ToastState } from '@/components/ui/Toast'
@@ -83,7 +84,7 @@ export function ResultCard({
   const isProfit = profit >= 0
   const profitColor = isProfit ? '#1D9E75' : '#E24B4A'
 
-  const alerts = computeAlerts({ revenue, profit, profitPct, fixedFees, varFees })
+  const alerts = computeAlerts({ revenue, profit })
 
   const { hasFeature: canSave, loading: featureLoading } = useHasFeature('shopee_save_result')
   const { hasFeature: canShare, loading: shareFeatureLoading } = useHasFeature('shopee_share_link')
@@ -111,7 +112,10 @@ export function ResultCard({
     category, categoryLabel,
   }
 
-  const results = { feeTotal, profit, profitPct, revenue }
+  // Snapshot SmartAlerts vào results.alerts để khi load saved/public view
+  // sẽ render đúng alerts tại thời điểm save (không phụ thuộc logic mới).
+  const smartAlerts = computeSmartAlerts({ revenue, feeTotal, profitPct }, varFees)
+  const results = { feeTotal, profit, profitPct, revenue, alerts: smartAlerts }
 
   const handleSaveClick = () => {
     if (!canSave || featureLoading) return

@@ -4,6 +4,8 @@ import { Loader2, AlertCircle, Clock, Calculator } from 'lucide-react'
 import { getPublicResult, type PublicResultData } from '@/lib/saved-results'
 import { trackShareLinkViewed } from '@/lib/analytics'
 import { fmtVND, fmtPct } from '@/lib/utils'
+import { SmartAlerts } from '@/components/calculator/SmartAlerts'
+import type { SmartAlert } from '@/lib/smart-alerts'
 
 interface FeeSnapshotItem {
   id: string
@@ -133,8 +135,9 @@ function ErrorState({ message }: { message: string }) {
 
 function Body({ data }: { data: PublicResultData }) {
   const inputs = data.inputs as { costPrice?: number; sellPrice?: number; category?: string; categoryLabel?: string }
-  const results = data.results as { feeTotal?: number; profit?: number; profitPct?: number; revenue?: number }
+  const results = data.results as { feeTotal?: number; profit?: number; profitPct?: number; revenue?: number; alerts?: SmartAlert[] }
   const fees = (data.fees_snapshot as unknown as FeeSnapshotItem[]) ?? []
+  const savedAlerts = Array.isArray(results.alerts) ? results.alerts : null
 
   const costPrice = Number(inputs.costPrice ?? 0)
   const sellPrice = Number(inputs.sellPrice ?? 0)
@@ -238,6 +241,10 @@ function Body({ data }: { data: PublicResultData }) {
           last
         />
       </Section>
+
+      {savedAlerts && savedAlerts.length > 0 && (
+        <SmartAlerts hasFeature={true} presetAlerts={savedAlerts} />
+      )}
 
       {/* CTA */}
       <div style={{
