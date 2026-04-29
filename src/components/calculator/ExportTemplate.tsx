@@ -71,7 +71,7 @@ function FeeRow({ fee }: { fee: ExportFee }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'baseline', gap: 12,
-      padding: '7px 0', borderBottom: '0.5px solid #F1EFE8', fontSize: 13,
+      padding: '9px 0', fontSize: 13,
     }}>
       <div style={{
         color: '#2C2C2A', flex: 1, minWidth: 0,
@@ -220,19 +220,21 @@ export function ExportTemplate(props: ExportTemplateProps) {
           <div style={{
             ...NUMERIC_STYLE,
             fontSize: 32, fontWeight: 500, color: profitColor,
-            lineHeight: 1,
+            lineHeight: 1.2,
           }}>
             {fmtVND(results.profit)}
           </div>
-          <div style={{
+          <span style={{
             ...NUMERIC_STYLE,
+            display: 'inline-block', verticalAlign: 'middle',
+            transform: 'translateY(-2px)',
             background: pillBg, color: pillColor,
             padding: '4px 12px', borderRadius: 999,
-            fontSize: 14, fontWeight: 500, lineHeight: 1,
+            fontSize: 14, fontWeight: 500, lineHeight: 1.4,
             flexShrink: 0, whiteSpace: 'nowrap',
           }}>
             {pillSign}{Math.abs(results.profitPct).toFixed(2)}%
-          </div>
+          </span>
         </div>
 
         {/* Gauge — chia theo ngưỡng + pointer theo tỷ lệ thực */}
