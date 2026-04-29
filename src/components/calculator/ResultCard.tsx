@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bookmark, Image, Download, Share2, ArrowUp, ArrowDown, Lock } from 'lucide-react'
+import { Bookmark, Image, Download, Share2, ArrowUp, ArrowDown, Lock, Loader2 } from 'lucide-react'
 import { ProfitGauge } from './ProfitGauge'
 import { AlertBadges, computeAlerts } from './AlertBadges'
 import { SaveResultDialog } from './SaveResultDialog'
 import { ShareLinkDialog } from './ShareLinkDialog'
 import { fmtVND, fmtNum, fmtPct } from '@/lib/utils'
 import { useHasFeature } from '@/hooks/useHasFeature'
+import { exportElementAsPNG, buildExportFilename } from '@/lib/export-image'
+import { exportElementAsPDF } from '@/lib/export-pdf'
+import { trackEvent } from '@/lib/analytics'
 import type { Fee } from '@/types/fees'
 import type { ToastState } from '@/components/ui/Toast'
 
@@ -60,7 +63,9 @@ export function ResultCard({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [savedResultId, setSavedResultId] = useState<string | null>(null)
+  const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null)
   const wantShareAfterSaveRef = useRef(false)
+  const cardRef = useRef<HTMLDivElement>(null)
   const isProfit = profit >= 0
   const profitColor = isProfit ? '#1D9E75' : '#E24B4A'
 
@@ -68,6 +73,8 @@ export function ResultCard({
 
   const { hasFeature: canSave, loading: featureLoading } = useHasFeature('shopee_save_result')
   const { hasFeature: canShare, loading: shareFeatureLoading } = useHasFeature('shopee_share_link')
+  const { hasFeature: canExportImage, loading: exportImageLoading } = useHasFeature('shopee_export_image')
+  const { hasFeature: canExportPdf, loading: exportPdfLoading } = useHasFeature('shopee_export_pdf')
 
   // Saved result tied to current inputs/fees; clear khi user thay đổi inputs hay fees
   // → tránh share một snapshot stale.
@@ -127,8 +134,45 @@ export function ResultCard({
     }
   }
 
+  const handleExportImage = async () => {
+    if (!cardRef.current || !canExportImage || exportImageLoading || exporting) return
+    setExporting('png')
+    try {
+      const filename = buildExportFilename(productName, 'png')
+      await exportElementAsPNG(cardRef.current, filename)
+      trackEvent('export_image', {
+        event_category: 'engagement',
+        tool_id: 'shopee_calculator',
+      })
+      onShowToast?.({ kind: 'success', message: 'Đã tải ảnh kết quả' })
+    } catch {
+      onShowToast?.({ kind: 'error', message: 'Lỗi khi tải ảnh, vui lòng thử lại' })
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  const handleExportPdf = async () => {
+    if (!cardRef.current || !canExportPdf || exportPdfLoading || exporting) return
+    setExporting('pdf')
+    try {
+      const filename = buildExportFilename(productName, 'pdf')
+      await exportElementAsPDF(cardRef.current, filename)
+      trackEvent('export_pdf', {
+        event_category: 'engagement',
+        tool_id: 'shopee_calculator',
+      })
+      onShowToast?.({ kind: 'success', message: 'Đã xuất file PDF' })
+    } catch {
+      onShowToast?.({ kind: 'error', message: 'Lỗi khi xuất PDF, vui lòng thử lại' })
+    } finally {
+      setExporting(null)
+    }
+  }
+
   return (
     <div
+      ref={cardRef}
       data-result-card
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -232,17 +276,47 @@ export function ResultCard({
           {canSave ? <Bookmark size={14} /> : <Lock size={14} />}
           Lưu kết quả
         </button>
-        <button style={btnSec}><Image size={14} /> Tải ảnh</button>
-        <button style={btnSec}><Download size={14} /> Xuất PDF</button>
+        <button
+          onClick={handleExportImage}
+          disabled={!canExportImage || exportImageLoading || exporting !== null}
+          title={!canExportImage && !exportImageLoading ? 'Liên hệ admin để mở khóa tính năng tải ảnh' : undefined}
+          style={{
+            ...btnSec,
+            background: canExportImage ? '#FFFFFF' : '#F5F5F0',
+            color: canExportImage ? '#1A1A1A' : '#A8A89E',
+            cursor: canExportImage && !exportImageLoading && exporting === null ? 'pointer' : 'not-allowed',
+            opacity: canExportImage ? 1 : 0.7,
+          }}
+        >
+          {!canExportImage ? <Lock size={14} /> :
+            exporting === 'png' ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> :
+            <Image size={14} />} Tải ảnh
+        </button>
+        <button
+          onClick={handleExportPdf}
+          disabled={!canExportPdf || exportPdfLoading || exporting !== null}
+          title={!canExportPdf && !exportPdfLoading ? 'Liên hệ admin để mở khóa tính năng xuất PDF' : undefined}
+          style={{
+            ...btnSec,
+            background: canExportPdf ? '#FFFFFF' : '#F5F5F0',
+            color: canExportPdf ? '#1A1A1A' : '#A8A89E',
+            cursor: canExportPdf && !exportPdfLoading && exporting === null ? 'pointer' : 'not-allowed',
+            opacity: canExportPdf ? 1 : 0.7,
+          }}
+        >
+          {!canExportPdf ? <Lock size={14} /> :
+            exporting === 'pdf' ? <Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> :
+            <Download size={14} />} Xuất PDF
+        </button>
         <button
           onClick={handleShareClick}
-          disabled={!canShare || shareFeatureLoading}
+          disabled={!canShare || shareFeatureLoading || exporting !== null}
           title={!canShare && !shareFeatureLoading ? 'Liên hệ admin để mở khóa tính năng chia sẻ' : undefined}
           style={{
             ...btnSec,
             background: canShare ? '#FFFFFF' : '#F5F5F0',
             color: canShare ? '#1A1A1A' : '#A8A89E',
-            cursor: canShare && !shareFeatureLoading ? 'pointer' : 'not-allowed',
+            cursor: canShare && !shareFeatureLoading && exporting === null ? 'pointer' : 'not-allowed',
             opacity: canShare ? 1 : 0.7,
           }}
         >
@@ -275,6 +349,10 @@ export function ResultCard({
         @keyframes pulse {
           0%, 100% { transform: scale(1); opacity: 0.4; }
           50% { transform: scale(2.2); opacity: 0; }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
         }
         @media (max-width: 480px) {
           .result-actions { grid-template-columns: repeat(2, 1fr) !important; }
