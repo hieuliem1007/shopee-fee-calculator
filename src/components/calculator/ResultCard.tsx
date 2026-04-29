@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bookmark, Image, Download, Share2, ArrowUp, ArrowDown, Lock, Loader2 } from 'lucide-react'
 import { ProfitGauge } from './ProfitGauge'
-import { AlertBadges, computeAlerts } from './AlertBadges'
+import { SmartAlerts } from './SmartAlerts'
 import { SaveResultDialog } from './SaveResultDialog'
 import { ShareLinkDialog } from './ShareLinkDialog'
 import { ExportTemplate, type ExportFee } from './ExportTemplate'
@@ -84,12 +84,11 @@ export function ResultCard({
   const isProfit = profit >= 0
   const profitColor = isProfit ? '#1D9E75' : '#E24B4A'
 
-  const alerts = computeAlerts({ revenue, profit })
-
   const { hasFeature: canSave, loading: featureLoading } = useHasFeature('shopee_save_result')
   const { hasFeature: canShare, loading: shareFeatureLoading } = useHasFeature('shopee_share_link')
   const { hasFeature: canExportImage, loading: exportImageLoading } = useHasFeature('shopee_export_image')
   const { hasFeature: canExportPdf, loading: exportPdfLoading } = useHasFeature('shopee_export_pdf')
+  const { hasFeature: canSmartAlerts, loading: smartAlertsLoading } = useHasFeature('shopee_smart_alerts')
 
   // Saved result tied to current inputs/fees; clear khi user thay đổi inputs hay fees
   // → tránh share một snapshot stale.
@@ -114,7 +113,7 @@ export function ResultCard({
 
   // Snapshot SmartAlerts vào results.alerts để khi load saved/public view
   // sẽ render đúng alerts tại thời điểm save (không phụ thuộc logic mới).
-  const smartAlerts = computeSmartAlerts({ revenue, feeTotal, profitPct }, varFees)
+  const smartAlerts = computeSmartAlerts({ revenue, feeTotal, profit, profitPct }, varFees)
   const results = { feeTotal, profit, profitPct, revenue, alerts: smartAlerts }
 
   const handleSaveClick = () => {
@@ -296,7 +295,13 @@ export function ResultCard({
         <Metric label="% Phí / Doanh thu" value={fmtPct(revenue > 0 ? feeTotal / revenue * 100 : 0)} divider />
       </div>
 
-      <AlertBadges alerts={alerts} />
+      {!smartAlertsLoading && (
+        <SmartAlerts
+          result={{ revenue, feeTotal, profit, profitPct }}
+          varFees={varFees}
+          hasFeature={canSmartAlerts}
+        />
+      )}
 
       {/* Action buttons */}
       <div className="result-actions" style={{
