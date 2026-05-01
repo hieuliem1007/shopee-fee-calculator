@@ -90,9 +90,12 @@ export function useDbFees(shopType: ShopType = 'mall'): DbFeesState {
     return () => { cancelled = true }
   }, [tick, shopType])
 
-  // loading = true chỉ khi chưa từng load thành công lần nào.
+  // loading = true cho tới khi initial fetch hoàn tất (success hoặc error).
+  // Bug fix: ban đầu refetching=false (default useState), nếu cond là
+  // `!initialLoaded && refetching` thì frame đầu tiên loading=false →
+  // CalculatorApp render CalculatorBody với categories=[] → SelectField crash.
   // Sau initial load, các refetch (đổi shopType) chỉ set refetching=true,
   // UI vẫn giữ data cũ trong lúc fetch tránh flash blank screen.
-  const loading = !initialLoaded && refetching
+  const loading = !initialLoaded
   return { loading, refetching, error, fixedFees, varFees, categories, reload }
 }
