@@ -6,6 +6,11 @@ interface InitialData {
   fixedFees: Fee[]      // DB-mapped shopee_fixed (không có 'fixed' synthetic)
   varFees: Fee[]        // DB-mapped shopee_variable
   categories: Category[]
+  // M6.9.2 — shopType được lift lên CalculatorApp level (driver cho useDbFees
+  // refetch categories khi user đổi shop). useFeeCalculator nhận controlled
+  // value + setter từ ngoài.
+  shopType: ShopType
+  setShopType: (v: ShopType) => void
 }
 
 // Synthetic 'fixed' fee xếp đầu fixedFees panel; rate = adj của ngành đang chọn.
@@ -16,11 +21,11 @@ function withSyntheticFixed(dbFixed: Fee[], adj: number): Fee[] {
 export function useFeeCalculator(initial: InitialData) {
   const defaultCategoryId = initial.categories[0]?.id ?? ''
   const defaultAdj = initial.categories[0]?.adj ?? 0
+  const { shopType, setShopType } = initial
 
   const [costPrice, setCostPrice] = useState(200000)
   const [sellPrice, setSellPrice] = useState(400000)
   const [productName, setProductName] = useState('')
-  const [shopType, setShopType] = useState<ShopType>('mall')
   const [category, setCategory] = useState(defaultCategoryId)
   const [taxMode, setTaxMode] = useState<TaxMode>('hokd')
   const [mode, setMode] = useState<CalcMode>('forward')
@@ -37,6 +42,27 @@ export function useFeeCalculator(initial: InitialData) {
       f.id === 'fixed' ? { ...f, rate: cat.adj } : f
     ))
   }, [category, initial.categories])
+
+  // M6.9.2 — khi đổi shopType, danh sách categories thay đổi (Mall vs Normal
+  // có id khác nhau). Nếu category đang chọn không còn trong list mới → reset
+  // về category đầu tiên của bộ mới.
+  // Lưu ý: applySnapshot có thể setShopType + setCategory cùng batch với category
+  // belong to NEW shopType, NHƯNG dbFees còn đang refetch (categories cũ). Nếu
+  // reset vội sẽ mất category snapshot. → wait until categories match shopType.
+  // Heuristic đơn giản: chỉ reset khi categories list đã có data (length > 0)
+  // VÀ category id không tồn tại trong list. Race khi refetch: categories list
+  // cũ vẫn có >0 items, nên có thể vẫn reset sai. Để tránh, applySnapshot sẽ set
+  // category SAU khi setShopType (dbFees refetch xong) — xem CalcFlow apply.
+  // Hiện tại chấp nhận trade-off: edge case applySnapshot Mall→Normal với category
+  // không trùng tên ngành sẽ reset về normal[0]. User có thể pick lại.
+  useEffect(() => {
+    if (initial.categories.length === 0) return
+    if (!category) return
+    const exists = initial.categories.some(c => c.id === category)
+    if (!exists) {
+      setCategory(initial.categories[0].id)
+    }
+  }, [initial.categories, category])
 
   const derived = useMemo(
     () => derive(costPrice, sellPrice, fixedFees, varFees),

@@ -5,14 +5,19 @@
 // (user phải reload page hoặc bấm reload() nếu cần).
 // KHÔNG fallback hardcode khi DB fail (Phase 3 quyết định: DB là
 // source of truth → nếu DB chết thì calculator không tính được).
+//
+// M6.9.2 — categories filter theo shopType (mall/normal). Hook nhận
+// shopType param, refetch khi đổi loại shop. Default categories load
+// 'mall' để khớp default state Calculator.
 
 import { useEffect, useState, useCallback } from 'react'
 import { listDefaultFees, listCategoryFees } from './fees-admin'
 import { mapDbFeeToClientFee, mapDbCategoryToClientCategory } from './fees'
-import type { Fee, Category } from '@/types/fees'
+import type { Fee, Category, ShopType } from '@/types/fees'
 
 export interface DbFeesState {
-  loading: boolean
+  loading: boolean      // chỉ true ở initial load đầu tiên (block UI)
+  refetching: boolean   // true khi đang refetch (vd đổi shopType) — UI vẫn hiển thị
   error: string | null
   fixedFees: Fee[]
   varFees: Fee[]
@@ -20,8 +25,9 @@ export interface DbFeesState {
   reload: () => void
 }
 
-export function useDbFees(): DbFeesState {
-  const [loading, setLoading] = useState(true)
+export function useDbFees(shopType: ShopType = 'mall'): DbFeesState {
+  const [initialLoaded, setInitialLoaded] = useState(false)
+  const [refetching, setRefetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fixedFees, setFixedFees] = useState<Fee[]>([])
   const [varFees, setVarFees] = useState<Fee[]>([])
@@ -32,16 +38,17 @@ export function useDbFees(): DbFeesState {
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    setRefetching(true)
     setError(null)
 
-    Promise.all([listDefaultFees(false), listCategoryFees(false)])
+    Promise.all([listDefaultFees(false), listCategoryFees(false, shopType)])
       .then(([defaults, cats]) => {
         if (cancelled) return
 
         if (defaults.length === 0 || cats.length === 0) {
           setError('Không tải được phí, vui lòng tải lại trang')
-          setLoading(false)
+          setRefetching(false)
+          setInitialLoaded(true)
           return
         }
 
@@ -70,16 +77,22 @@ export function useDbFees(): DbFeesState {
         setFixedFees(fixed)
         setVarFees(variable)
         setCategories(cs)
-        setLoading(false)
+        setRefetching(false)
+        setInitialLoaded(true)
       })
       .catch(() => {
         if (cancelled) return
         setError('Không tải được phí, vui lòng tải lại trang')
-        setLoading(false)
+        setRefetching(false)
+        setInitialLoaded(true)
       })
 
     return () => { cancelled = true }
-  }, [tick])
+  }, [tick, shopType])
 
-  return { loading, error, fixedFees, varFees, categories, reload }
+  // loading = true chỉ khi chưa từng load thành công lần nào.
+  // Sau initial load, các refetch (đổi shopType) chỉ set refetching=true,
+  // UI vẫn giữ data cũ trong lúc fetch tránh flash blank screen.
+  const loading = !initialLoaded && refetching
+  return { loading, refetching, error, fixedFees, varFees, categories, reload }
 }

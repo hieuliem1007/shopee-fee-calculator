@@ -100,6 +100,10 @@ export function ResultCard({
     costPrice, sellPrice: revenue,
     category, categoryLabel,
     shopTypeLabel, taxModeLabel: businessTypeLabel,
+    // M6.9.2 — lưu shopType raw value để saved/share biết loại shop chính xác
+    // (independent của label tiếng Việt). Saved cũ không có field này → fallback
+    // theo shopTypeLabel hoặc null tại read site.
+    shopType: shopTypeLabel === 'Shop Mall' ? 'mall' : 'normal',
   }
 
   // Snapshot SmartAlerts vào results.alerts để khi load saved/public view

@@ -116,8 +116,10 @@ export function isSeedFee(fee: DefaultFee): boolean {
 
 
 // ════════════════════════════════════════════════════════════════
-// Category fees (Tab 2)
+// Category fees (Tab 2) — M6.9.2 tách theo shop_type (mall/normal)
 // ════════════════════════════════════════════════════════════════
+
+export type ShopTypeFilter = 'mall' | 'normal'
 
 export interface CategoryFee {
   id: string
@@ -127,6 +129,7 @@ export interface CategoryFee {
   display_order: number | null
   is_active: boolean
   description: string | null
+  shop_type: ShopTypeFilter
   updated_at: string
   updated_by: string | null
   created_at: string
@@ -137,6 +140,7 @@ export interface CreateCategoryFeeInput {
   fee_value: number
   fee_unit?: FeeUnit
   description?: string | null
+  shop_type?: ShopTypeFilter
 }
 
 export interface UpdateCategoryFeeChanges {
@@ -164,11 +168,12 @@ export interface ImportResult {
 }
 
 export async function listCategoryFees(
-  includeInactive: boolean = false
+  includeInactive: boolean = false,
+  shopType: ShopTypeFilter | null = null
 ): Promise<CategoryFee[]> {
-  const { data, error } = await supabase.rpc('list_category_fees', {
-    p_include_inactive: includeInactive,
-  })
+  const params: Record<string, unknown> = { p_include_inactive: includeInactive }
+  if (shopType !== null) params.p_shop_type = shopType
+  const { data, error } = await supabase.rpc('list_category_fees', params)
   if (error) return []
   return (data ?? []) as CategoryFee[]
 }
@@ -181,6 +186,7 @@ export async function createCategoryFee(
     p_fee_value: input.fee_value,
     p_fee_unit: input.fee_unit ?? 'percent',
     p_description: input.description ?? null,
+    p_shop_type: input.shop_type ?? 'normal',
   })
   if (error) return { data: null, error: extractError(error) }
   return { data: data as { success: boolean; category_id: string }, error: null }
@@ -223,11 +229,13 @@ export async function softDeleteCategoryFee(
 
 export async function bulkImportCategories(
   rows: ImportRow[],
-  mode: ImportMode
+  mode: ImportMode,
+  shopType: ShopTypeFilter = 'normal'
 ): Promise<{ data: ImportResult | null; error: string | null }> {
   const { data, error } = await supabase.rpc('bulk_import_categories', {
     p_categories: rows,
     p_mode: mode,
+    p_shop_type: shopType,
   })
   if (error) return { data: null, error: extractError(error) }
   return { data: data as ImportResult, error: null }

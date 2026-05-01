@@ -4,7 +4,7 @@ import {
   ArrowLeft, ArrowRight, Download, X, CheckCircle2,
 } from 'lucide-react'
 import {
-  bulkImportCategories, type ImportMode, type ImportResult,
+  bulkImportCategories, type ImportMode, type ImportResult, type ShopTypeFilter,
 } from '@/lib/fees-admin'
 import {
   parseExcelFile, downloadSampleExcel, type ParseResult,
@@ -106,12 +106,13 @@ function SecondaryButton({ children, onClick, disabled }: {
 // ── Main wizard ─────────────────────────────────────────────────────
 
 export interface CategoryImportDialogProps {
+  shopType: ShopTypeFilter
   onClose: () => void
   onSuccess: (result: ImportResult) => void
   onError: (msg: string) => void
 }
 
-export function CategoryImportDialog({ onClose, onSuccess, onError }: CategoryImportDialogProps) {
+export function CategoryImportDialog({ shopType, onClose, onSuccess, onError }: CategoryImportDialogProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [file, setFile] = useState<File | null>(null)
   const [parseResult, setParseResult] = useState<ParseResult | null>(null)
@@ -142,7 +143,7 @@ export function CategoryImportDialog({ onClose, onSuccess, onError }: CategoryIm
     if (!parseResult || parseResult.validRows.length === 0) return
     setImporting(true)
     const rows = parseResult.validRows.map(r => r.data!).filter(Boolean)
-    const { data, error } = await bulkImportCategories(rows, mode)
+    const { data, error } = await bulkImportCategories(rows, mode, shopType)
     setImporting(false)
     if (error) {
       onError(error)
@@ -162,7 +163,7 @@ export function CategoryImportDialog({ onClose, onSuccess, onError }: CategoryIm
         alignItems: 'center', justifyContent: 'space-between',
       }}>
         <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A' }}>
-          Import ngành hàng từ Excel
+          Import ngành hàng từ Excel · {shopType === 'mall' ? 'Shop Mall' : 'Shop thường'}
         </div>
         <button onClick={onClose} style={{
           background: 'transparent', border: 'none', cursor: 'pointer',

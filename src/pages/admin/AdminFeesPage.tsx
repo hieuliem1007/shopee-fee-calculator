@@ -7,7 +7,7 @@ import {
   listDefaultFees, createDefaultFee, updateDefaultFee, softDeleteDefaultFee,
   isSeedFee, type DefaultFee, type FeeUnit,
   listCategoryFees, createCategoryFee, updateCategoryFee, softDeleteCategoryFee,
-  type CategoryFee,
+  type CategoryFee, type ShopTypeFilter,
 } from '@/lib/fees-admin'
 import { downloadSampleExcel } from '@/lib/import-excel'
 import { CategoryImportDialog } from '@/components/admin/CategoryImportDialog'
@@ -777,23 +777,51 @@ interface CategoryTabProps {
 }
 
 function CategoryTab({ categoryFees, loading, showToast, reload }: CategoryTabProps) {
+  const [shopType, setShopType] = useState<ShopTypeFilter>('mall')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active')
   const [showAdd, setShowAdd] = useState(false)
   const [editTarget, setEditTarget] = useState<CategoryFee | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CategoryFee | null>(null)
   const [showImport, setShowImport] = useState(false)
 
-  const filtered = useMemo(() => {
-    if (statusFilter === 'all') return categoryFees
-    if (statusFilter === 'active') return categoryFees.filter(c => c.is_active)
-    return categoryFees.filter(c => !c.is_active)
-  }, [categoryFees, statusFilter])
+  // M6.9.2 — filter theo shopType trước, rồi mới theo status.
+  const byShopType = useMemo(
+    () => categoryFees.filter(c => c.shop_type === shopType),
+    [categoryFees, shopType]
+  )
 
-  const activeCount = useMemo(() => categoryFees.filter(c => c.is_active).length, [categoryFees])
-  const inactiveCount = useMemo(() => categoryFees.filter(c => !c.is_active).length, [categoryFees])
+  const filtered = useMemo(() => {
+    if (statusFilter === 'all') return byShopType
+    if (statusFilter === 'active') return byShopType.filter(c => c.is_active)
+    return byShopType.filter(c => !c.is_active)
+  }, [byShopType, statusFilter])
+
+  const activeCount = useMemo(() => byShopType.filter(c => c.is_active).length, [byShopType])
+  const inactiveCount = useMemo(() => byShopType.filter(c => !c.is_active).length, [byShopType])
+
+  const mallActiveCount = useMemo(
+    () => categoryFees.filter(c => c.shop_type === 'mall' && c.is_active).length, [categoryFees]
+  )
+  const normalActiveCount = useMemo(
+    () => categoryFees.filter(c => c.shop_type === 'normal' && c.is_active).length, [categoryFees]
+  )
 
   return (
     <>
+      {/* M6.9.2 — Sub-tab Mall/Normal */}
+      <div style={{
+        display: 'flex', gap: 4, marginBottom: 14,
+        padding: 4, background: '#FAFAF7', borderRadius: 10,
+        border: '1px solid #EFEAE0', width: 'fit-content',
+      }}>
+        <SubTabButton active={shopType === 'mall'} onClick={() => setShopType('mall')}>
+          🏬 Shop Mall ({mallActiveCount})
+        </SubTabButton>
+        <SubTabButton active={shopType === 'normal'} onClick={() => setShopType('normal')}>
+          🏪 Shop thường ({normalActiveCount})
+        </SubTabButton>
+      </div>
+
       {/* Action row */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -887,6 +915,7 @@ function CategoryTab({ categoryFees, loading, showToast, reload }: CategoryTabPr
       {/* Dialogs */}
       {showAdd && (
         <AddCategoryDialog
+          shopType={shopType}
           onClose={() => setShowAdd(false)}
           onSuccess={msg => { setShowAdd(false); showToast('success', msg); reload() }}
           onError={msg => showToast('error', msg)}
@@ -908,6 +937,7 @@ function CategoryTab({ categoryFees, loading, showToast, reload }: CategoryTabPr
       )}
       {showImport && (
         <CategoryImportDialog
+          shopType={shopType}
           onClose={() => setShowImport(false)}
           onSuccess={result => {
             setShowImport(false)
@@ -918,6 +948,21 @@ function CategoryTab({ categoryFees, loading, showToast, reload }: CategoryTabPr
         />
       )}
     </>
+  )
+}
+
+function SubTabButton({ active, onClick, children }: {
+  active: boolean; onClick: () => void; children: ReactNode
+}) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '7px 14px', borderRadius: 8, border: 'none',
+      background: active ? '#fff' : 'transparent',
+      color: active ? '#1A1A1A' : '#6B6B66',
+      fontSize: 12, fontWeight: active ? 600 : 500,
+      cursor: 'pointer', fontFamily: 'inherit',
+      boxShadow: active ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+    }}>{children}</button>
   )
 }
 
@@ -976,7 +1021,8 @@ function CategoryRow({ category, onEdit, onDelete }: {
 
 // ── Add category dialog ─────────────────────────────────────────────
 
-function AddCategoryDialog({ onClose, onSuccess, onError }: {
+function AddCategoryDialog({ shopType, onClose, onSuccess, onError }: {
+  shopType: ShopTypeFilter
   onClose: () => void
   onSuccess: (msg: string) => void
   onError: (msg: string) => void
@@ -1005,19 +1051,24 @@ function AddCategoryDialog({ onClose, onSuccess, onError }: {
       fee_value: value,
       fee_unit: form.fee_unit,
       description: form.description.trim() || null,
+      shop_type: shopType,
     })
     setSaving(false)
     if (error) {
       onError(error)
       return
     }
-    onSuccess('Đã thêm ngành mới')
+    onSuccess(`Đã thêm ngành mới vào ${shopType === 'mall' ? 'Shop Mall' : 'Shop thường'}`)
   }
 
+  const shopTypeLabel = shopType === 'mall' ? 'Shop Mall' : 'Shop thường'
   return (
     <DialogShell onClose={onClose}>
-      <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 16 }}>
+      <div style={{ fontSize: 16, fontWeight: 600, color: '#1A1A1A', marginBottom: 6 }}>
         Thêm ngành hàng mới
+      </div>
+      <div style={{ fontSize: 12, color: '#6B6B66', marginBottom: 16 }}>
+        Sẽ được thêm vào <strong>{shopTypeLabel}</strong>. Đổi sub-tab nếu muốn thêm vào loại khác.
       </div>
       <form onSubmit={e => { e.preventDefault(); handleSubmit() }}>
         <div style={{ marginBottom: 12 }}>

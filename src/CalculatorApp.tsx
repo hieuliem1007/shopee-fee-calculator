@@ -26,7 +26,10 @@ import type { Scenario } from './types/fees'
 import type { ScData } from './components/calculator/Scenarios'
 
 export default function CalculatorApp() {
-  const dbFees = useDbFees()
+  // M6.9.2 — shopType lift lên đây để useDbFees biết filter ngành hàng theo loại shop.
+  // Khi user đổi (Mall ↔ Normal), useDbFees refetch categories với filter mới.
+  const [shopType, setShopType] = useState<ShopType>('mall')
+  const dbFees = useDbFees(shopType)
 
   if (dbFees.loading) {
     return (
@@ -68,7 +71,7 @@ export default function CalculatorApp() {
     )
   }
 
-  return <CalculatorBody dbFees={dbFees} />
+  return <CalculatorBody dbFees={dbFees} shopType={shopType} setShopType={setShopType} />
 }
 
 const SHOP_TYPE_LABELS: Record<ShopType, string> = {
@@ -90,11 +93,16 @@ const TAX_RATE_FOR_MODE: Record<'hokd' | 'company', number> = {
   company: 0,
 }
 
-function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
+function CalculatorBody({ dbFees, shopType, setShopType }: {
+  dbFees: DbFeesState
+  shopType: ShopType
+  setShopType: (v: ShopType) => void
+}) {
   const calc = useFeeCalculator({
     fixedFees: dbFees.fixedFees,
     varFees: dbFees.varFees,
     categories: dbFees.categories,
+    shopType, setShopType,
   })
   const { profile } = useAuth()
   const [scenarios, setScenarios] = useState<Scenario[]>([])
