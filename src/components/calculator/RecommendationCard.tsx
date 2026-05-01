@@ -4,15 +4,22 @@
 // 2 chế độ:
 // - Live: pass ctx → component compute (Calculator)
 // - Snapshot: pass output đã lưu → render trực tiếp (Saved/Share)
+//
+// M6.9.1 — Feature gate `shopee_expert_insight`:
+// - hasFeature=false → render LockedCard với CTA Zalo (giống ScenariosLockCard)
+// - hasFeature=true (default) → render full content
+// - SavedDetail/PublicShare luôn pass hasFeature=true (data đã chia sẻ).
 
-import { useMemo } from 'react'
-import { Lightbulb, Target, Sparkles, Rocket } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Lightbulb, Lock, Target, Sparkles, Rocket } from 'lucide-react'
 import { generateRecommendation, type RecommendationContext, type RecommendationOutput, type RecommendationState } from '@/lib/recommendation-engine'
 import { fmtVND } from '@/lib/utils'
+import { getZaloLink } from '@/lib/system-config'
 
 interface Props {
   ctx?: RecommendationContext
   preset?: RecommendationOutput
+  hasFeature?: boolean
 }
 
 // Card wrapper màu xanh thống nhất (đồng bộ với design cũ Charts.tsx).
@@ -35,8 +42,9 @@ const DIAGNOSIS_COLOR: Record<RecommendationState, string> = {
   excellent: '#064E3B',
 }
 
-export function RecommendationCard({ ctx, preset }: Props) {
+export function RecommendationCard({ ctx, preset, hasFeature = true }: Props) {
   const out = useMemo(() => preset ?? (ctx ? generateRecommendation(ctx) : null), [ctx, preset])
+  if (!hasFeature) return <RecommendationLockedCard />
   if (!out) return null
 
   const diagnosisColor = DIAGNOSIS_COLOR[out.diagnosis.state]
@@ -212,6 +220,69 @@ function PathCard({ label, primary, secondary, dim }: {
       }}>{primary}</div>
       <div style={{ fontSize: 12, color: '#6B6B66', marginTop: 3, lineHeight: 1.45 }}>
         {secondary}
+      </div>
+    </div>
+  )
+}
+
+function RecommendationLockedCard() {
+  const [zaloLink, setZaloLink] = useState<string | null>(null)
+  const [zaloError, setZaloError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getZaloLink()
+      .then(link => { if (!cancelled) setZaloLink(link) })
+      .catch(() => { if (!cancelled) setZaloError(true) })
+    return () => { cancelled = true }
+  }, [])
+
+  const disabled = !zaloLink || zaloError
+
+  return (
+    <div style={{
+      marginTop: 18,
+      background: '#FAFAF7', border: '1px dashed #E2DDD0', borderRadius: 16,
+      padding: '24px 28px', display: 'flex', gap: 16, alignItems: 'flex-start',
+    }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+        background: '#fff', border: '1px solid #EFEAE0',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Lock size={18} color="#3B82C4" />
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
+          color: '#3B82C4', textTransform: 'uppercase', marginBottom: 6,
+        }}>
+          Phân tích chuyên sâu từ E-Dream
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#1A1A1A', marginBottom: 4 }}>
+          Tính năng cao cấp — Mở khóa để xem chẩn đoán + mục tiêu + insight + hành động
+        </div>
+        <div style={{ fontSize: 13, color: '#6B6B66', lineHeight: 1.6, marginBottom: 14 }}>
+          Nhận phân tích 4 tầng từ E-Dream: chẩn đoán tài chính theo trạng thái sản phẩm,
+          2 lộ trình đạt biên mục tiêu, insight chuyên sâu về cấu trúc phí, và gợi ý hành động ưu tiên.
+        </div>
+        <a
+          href={disabled ? undefined : zaloLink!}
+          target="_blank"
+          rel="noreferrer"
+          aria-disabled={disabled}
+          onClick={e => { if (disabled) e.preventDefault() }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 16px', borderRadius: 8,
+            background: disabled ? '#E5E5E0' : '#0084FF',
+            color: disabled ? '#A8A89E' : '#fff',
+            fontSize: 13, fontWeight: 500, textDecoration: 'none',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {zaloLink === null && !zaloError ? 'Đang tải...' : zaloError ? 'Vui lòng thử lại sau' : 'Liên hệ Zalo nâng cấp'}
+        </a>
       </div>
     </div>
   )

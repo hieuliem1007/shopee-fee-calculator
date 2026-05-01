@@ -287,10 +287,12 @@ export function SavedResultDetailPage() {
       </div>
 
       {/* Expert Engine recommendation snapshot (M6.8). Đặt cuối — sau snapshot
-          banner, trước footer meta. Pre-M6.8 không có field → return null. */}
+          banner, trước footer meta. Pre-M6.8 không có field → return null.
+          M6.9.1: hasFeature={true} cho data đã save (giống SmartAlerts) — chủ
+          sở hữu xem snapshot của chính mình không bị gate. */}
       {savedRecommendation && (
         <div style={{ marginBottom: 16 }}>
-          <RecommendationCard preset={savedRecommendation} />
+          <RecommendationCard hasFeature={true} preset={savedRecommendation} />
         </div>
       )}
 

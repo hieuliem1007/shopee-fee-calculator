@@ -259,10 +259,11 @@ function Body({ data }: { data: PublicResultData }) {
         </span>
       </div>
 
-      {/* Expert Engine recommendation snapshot (M6.8). Đặt cuối — sau banner, trước CTA. */}
+      {/* Expert Engine recommendation snapshot (M6.8). Đặt cuối — sau banner, trước CTA.
+          M6.9.1: hasFeature={true} — public viewer LUÔN xem được snapshot đã chia sẻ. */}
       {savedRecommendation && (
         <div style={{ marginBottom: 22 }}>
-          <RecommendationCard preset={savedRecommendation} />
+          <RecommendationCard hasFeature={true} preset={savedRecommendation} />
         </div>
       )}
 

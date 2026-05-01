@@ -132,6 +132,7 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
   }, [calc, profile?.id])
 
   const { hasFeature: canCompare, loading: compareLoading } = useHasFeature('shopee_compare_scenarios')
+  const { hasFeature: canExpertInsight } = useHasFeature('shopee_expert_insight')
 
   const handleApplyScenario = (s: ScData) => calc.applySnapshot(s.snapshot)
 
@@ -235,8 +236,10 @@ function CalculatorBody({ dbFees }: { dbFees: DbFeesState }) {
       </section>
 
       {/* Expert Engine — Phân tích chuyên sâu (M6.8). Đặt sau "Top khoản phí",
-          trước "So sánh kịch bản" để user xem analytics rồi đến gợi ý hành động. */}
+          trước "So sánh kịch bản" để user xem analytics rồi đến gợi ý hành động.
+          M6.9.1 — gate qua shopee_expert_insight, locked card khi không có quyền. */}
       <RecommendationCard
+        hasFeature={canExpertInsight}
         ctx={{
           costPrice: calc.costPrice, sellPrice: calc.sellPrice,
           fixedFees: calc.fixedFees, varFees: calc.varFees,
