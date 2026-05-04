@@ -22,7 +22,10 @@ interface Props {
   children?: React.ReactNode
 }
 
-function Metric({ label, value, divider }: { label: string; value: string; divider?: boolean }) {
+function Metric({ label, value, subtitle, valueColor, divider }: {
+  label: string; value: string; subtitle?: string
+  valueColor?: string; divider?: boolean
+}) {
   return (
     <div style={{
       padding: '0 16px',
@@ -33,9 +36,15 @@ function Metric({ label, value, divider }: { label: string; value: string; divid
         textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
       }}>{label}</div>
       <div style={{
-        fontSize: 18, fontWeight: 600, color: '#1A1A1A',
+        fontSize: 18, fontWeight: 600, color: valueColor || '#1A1A1A',
         fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
       }}>{value}</div>
+      {subtitle && (
+        <div style={{
+          fontSize: 11, fontWeight: 500, color: '#A8A89E',
+          marginTop: 3, fontVariantNumeric: 'tabular-nums',
+        }}>{subtitle}</div>
+      )}
     </div>
   )
 }
@@ -43,9 +52,15 @@ function Metric({ label, value, divider }: { label: string; value: string; divid
 export function ResultHero({
   revenue, costPrice, feeTotal, profit, profitPct, kind = 'live', children,
 }: Props) {
+  const isEmpty = costPrice <= 0 || revenue <= 0
   const isProfit = profit >= 0
   const profitColor = isProfit ? '#1D9E75' : '#E24B4A'
   const isLive = kind === 'live'
+
+  // % so với doanh thu — dùng để render subtitle dưới mỗi KPI.
+  // Khi revenue=0 → '—' (không tính được).
+  const costPricePctOfRevenue = revenue > 0 ? (costPrice / revenue) * 100 : 0
+  const feeTotalPctOfRevenue = revenue > 0 ? (feeTotal / revenue) * 100 : 0
 
   return (
     <div
@@ -93,41 +108,81 @@ export function ResultHero({
           <div style={{ fontSize: 13, color: '#6B6B66', marginBottom: 6, fontWeight: 500 }}>
             Lợi nhuận
           </div>
+          {isEmpty ? (
+            <div style={{
+              fontSize: 52, fontWeight: 600, color: '#A8A89E',
+              letterSpacing: '-0.025em', lineHeight: 1,
+            }}>—</div>
+          ) : (
+            <div style={{
+              fontSize: 52, fontWeight: 600, color: profitColor,
+              letterSpacing: '-0.025em', lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+              display: 'flex', alignItems: 'baseline', gap: 2,
+            }}>
+              {isProfit ? '' : '-'}
+              <span>{fmtNum(Math.abs(profit))}</span>
+              <span style={{ fontSize: 28, fontWeight: 500, marginLeft: 2 }}>đ</span>
+            </div>
+          )}
+        </div>
+        {!isEmpty && (
           <div style={{
-            fontSize: 52, fontWeight: 600, color: profitColor,
-            letterSpacing: '-0.025em', lineHeight: 1,
-            fontVariantNumeric: 'tabular-nums',
-            display: 'flex', alignItems: 'baseline', gap: 2,
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '6px 12px', borderRadius: 999,
+            background: isProfit ? '#E1F5EE' : '#FCE5E4',
+            color: isProfit ? '#0F6E56' : '#A82928',
+            fontSize: 13, fontWeight: 600,
+            fontVariantNumeric: 'tabular-nums', marginBottom: 6,
           }}>
-            {isProfit ? '' : '-'}
-            <span>{fmtNum(Math.abs(profit))}</span>
-            <span style={{ fontSize: 28, fontWeight: 500, marginLeft: 2 }}>đ</span>
+            {isProfit ? <ArrowUp size={13} /> : <ArrowDown size={13} />}
+            {fmtPct(profitPct, true)}
           </div>
-        </div>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          padding: '6px 12px', borderRadius: 999,
-          background: isProfit ? '#E1F5EE' : '#FCE5E4',
-          color: isProfit ? '#0F6E56' : '#A82928',
-          fontSize: 13, fontWeight: 600,
-          fontVariantNumeric: 'tabular-nums', marginBottom: 6,
-        }}>
-          {isProfit ? <ArrowUp size={13} /> : <ArrowDown size={13} />}
-          {fmtPct(profitPct, true)}
-        </div>
+        )}
       </div>
 
-      <ProfitGauge pct={profitPct} />
+      {isEmpty ? (
+        <div style={{
+          marginTop: 20, padding: '12px 14px', borderRadius: 10,
+          background: 'rgba(245,184,28,0.08)', border: '1px dashed #E8D9A8',
+          fontSize: 13, color: '#7A5408', fontWeight: 500,
+        }}>
+          Nhập giá vốn và giá bán để xem kết quả tính phí và lợi nhuận
+        </div>
+      ) : (
+        <ProfitGauge pct={profitPct} />
+      )}
 
-      {/* Metrics */}
+      {/* Metrics — 4 cột với subtitle %. Cột 4 đổi từ "% Phí / DT" thành
+          "Lợi nhuận ròng %" (chỉ số quan trọng nhất với seller). */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
         marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(0,0,0,0.06)',
       }}>
-        <Metric label="Doanh thu" value={fmtVND(revenue)} />
-        <Metric label="Giá vốn" value={fmtVND(costPrice)} divider />
-        <Metric label="Tổng chi phí" value={fmtVND(feeTotal)} divider />
-        <Metric label="% Phí / Doanh thu" value={fmtPct(revenue > 0 ? feeTotal / revenue * 100 : 0)} divider />
+        <Metric
+          label="Doanh thu"
+          value={isEmpty ? '—' : fmtVND(revenue)}
+          subtitle={isEmpty ? undefined : '100% (gốc)'}
+        />
+        <Metric
+          label="Giá vốn"
+          value={isEmpty ? '—' : fmtVND(costPrice)}
+          subtitle={isEmpty ? undefined : `${fmtPct(costPricePctOfRevenue)} doanh thu`}
+          divider
+        />
+        <Metric
+          label="Tổng chi phí"
+          value={isEmpty ? '—' : fmtVND(feeTotal)}
+          subtitle={isEmpty ? undefined : `${fmtPct(feeTotalPctOfRevenue)} doanh thu`}
+          divider
+        />
+        <Metric
+          label="Lợi nhuận ròng %"
+          value={isEmpty ? '—' : fmtPct(profitPct, true)}
+          valueColor={isEmpty ? undefined : profitColor}
+          subtitle={isEmpty ? undefined : 'trên doanh thu'}
+          divider
+        />
       </div>
 
       {children}

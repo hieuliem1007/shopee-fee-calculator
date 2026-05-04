@@ -1,4 +1,4 @@
-import { fmtVND } from '@/lib/utils'
+import { fmtVND, fmtPct } from '@/lib/utils'
 
 interface Props {
   revenue: number
@@ -11,8 +11,9 @@ interface Props {
   sticky?: boolean
 }
 
-function Row({ label, value, color, weight = 500, op, divider, accent }: {
-  label: string; value: string; color?: string; weight?: number
+function Row({ label, value, pctText, color, weight = 500, op, divider, accent }: {
+  label: string; value: string; pctText?: string
+  color?: string; weight?: number
   op?: '−' | '=' | '+'; divider?: boolean; accent?: boolean
 }) {
   return (
@@ -37,14 +38,29 @@ function Row({ label, value, color, weight = 500, op, divider, accent }: {
         fontSize: accent ? 18 : 14, fontWeight: weight,
         color: color || '#1A1A1A',
         fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
-      }}>{value}</span>
+        display: 'inline-flex', alignItems: 'baseline', gap: 6,
+      }}>
+        {value}
+        {pctText && (
+          <span style={{
+            fontSize: accent ? 12 : 11, fontWeight: 500, color: '#A8A89E',
+          }}>({pctText})</span>
+        )}
+      </span>
     </div>
   )
 }
 
 export function CalcFlow({ revenue, costPrice, fixedTotal, varTotal, profit, sticky = true }: Props) {
+  const isEmpty = costPrice <= 0 || revenue <= 0
   const profitColor = profit >= 0 ? '#1D9E75' : '#E24B4A'
   const grossMargin = revenue - costPrice
+
+  // % so với doanh thu cho mỗi dòng. Khi revenue=0 → '—' (không tính được).
+  const pctOf = (n: number): string => revenue > 0 ? fmtPct((n / revenue) * 100) : '—'
+  const valueOf = (n: number): string => isEmpty ? '—' : fmtVND(n)
+  // Khi empty: ẩn pctText (KHÔNG hiển thị "(—)") để dòng gọn hơn.
+  const pctOrUndef = (n: number): string | undefined => isEmpty ? undefined : pctOf(n)
 
   return (
     <div style={{
@@ -62,15 +78,22 @@ export function CalcFlow({ revenue, costPrice, fixedTotal, varTotal, profit, sti
         <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#F5B81C' }} />
         Dòng tính lợi nhuận
       </div>
-      <Row label="Doanh thu" value={fmtVND(revenue)} weight={600} />
-      <Row label="Giá vốn sản phẩm" value={fmtVND(costPrice)} op="−" divider />
-      <Row label="Lãi gộp" value={fmtVND(grossMargin)}
-        color={grossMargin >= 0 ? '#1D9E75' : '#E24B4A'}
+      <Row label="Doanh thu" value={valueOf(revenue)}
+        pctText={isEmpty ? undefined : '100%'} weight={600} />
+      <Row label="Giá vốn sản phẩm" value={valueOf(costPrice)}
+        pctText={pctOrUndef(costPrice)} op="−" divider />
+      <Row label="Lãi gộp" value={valueOf(grossMargin)}
+        pctText={pctOrUndef(grossMargin)}
+        color={isEmpty ? undefined : (grossMargin >= 0 ? '#1D9E75' : '#E24B4A')}
         weight={600} op="=" divider accent />
-      <Row label="Tổng phí cố định" value={fmtVND(fixedTotal)} op="−" divider />
-      <Row label="Tổng phí biến đổi" value={fmtVND(varTotal)} op="−" />
-      <Row label="Lợi nhuận ròng" value={fmtVND(profit)}
-        color={profitColor} weight={700} op="=" divider accent />
+      <Row label="Tổng phí cố định" value={valueOf(fixedTotal)}
+        pctText={pctOrUndef(fixedTotal)} op="−" divider />
+      <Row label="Tổng phí biến đổi" value={valueOf(varTotal)}
+        pctText={pctOrUndef(varTotal)} op="−" />
+      <Row label="Lợi nhuận ròng" value={valueOf(profit)}
+        pctText={pctOrUndef(profit)}
+        color={isEmpty ? undefined : profitColor}
+        weight={700} op="=" divider accent />
     </div>
   )
 }

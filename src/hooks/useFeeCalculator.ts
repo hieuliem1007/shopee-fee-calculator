@@ -23,8 +23,8 @@ export function useFeeCalculator(initial: InitialData) {
   const defaultAdj = initial.categories[0]?.adj ?? 0
   const { shopType, setShopType } = initial
 
-  const [costPrice, setCostPrice] = useState(200000)
-  const [sellPrice, setSellPrice] = useState(400000)
+  const [costPrice, setCostPrice] = useState(0)
+  const [sellPrice, setSellPrice] = useState(0)
   const [productName, setProductName] = useState('')
   const [category, setCategory] = useState(defaultCategoryId)
   const [taxMode, setTaxMode] = useState<TaxMode>('hokd')

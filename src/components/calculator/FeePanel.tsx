@@ -167,8 +167,8 @@ function EditableRate({ fee, onRate, onKind, dim, accent }: {
 }
 
 // ── FeeRow ────────────────────────────────────────────────────────
-function FeeRow({ fee, dim, amt, isLast, onToggle, onRate, onKind, onName, onRemove, accent, readOnly }: {
-  fee: Fee; dim: boolean; amt: number; isLast: boolean
+function FeeRow({ fee, dim, amt, revenue, isLast, onToggle, onRate, onKind, onName, onRemove, accent, readOnly }: {
+  fee: Fee; dim: boolean; amt: number; revenue: number; isLast: boolean
   onToggle: () => void; onRate: (v: number) => void; onKind: (k: FeeKind) => void
   onName: (n: string) => void; onRemove: () => void; accent: string
   readOnly?: boolean
@@ -229,7 +229,21 @@ function FeeRow({ fee, dim, amt, isLast, onToggle, onRate, onKind, onName, onRem
           fontSize: 14, fontWeight: 600,
           color: dim ? '#A8A89E' : '#1A1A1A',
           fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
-        }}>{dim ? '0đ' : fmtVND(amt)}</div>
+        }}>
+          {dim ? '0đ' : (
+            fee.kind === 'flat' && fee.on ? (
+              <>
+                {fmtVND(amt)}
+                <span style={{
+                  marginLeft: 6, fontSize: 12, fontWeight: 500,
+                  color: '#A8A89E',
+                }}>
+                  · {revenue > 0 ? fmtPct((amt / revenue) * 100) : '—'}
+                </span>
+              </>
+            ) : fmtVND(amt)
+          )}
+        </div>
         <div style={{ fontSize: 11, color: '#8A8A82', marginTop: 2, lineHeight: 1.4 }}>
           {fee.hint}
         </div>
@@ -321,6 +335,7 @@ export function FeePanel({ title, fees, setFees, revenue, color, accentBg, readO
       <div>
         {fees.map((f, i) => (
           <FeeRow key={f.id} fee={f} dim={!f.on} amt={computeFee(f, revenue)}
+            revenue={revenue}
             isLast={i === fees.length - 1}
             onToggle={() => toggle(f.id)}
             onRate={(v) => updateRate(f.id, v)}
