@@ -9,9 +9,10 @@ interface MoneyInputProps {
   onChange: (v: number) => void
   hint: string
   autoFocus?: boolean
+  placeholder?: string
 }
 
-function MoneyInput({ label, value, onChange, hint, autoFocus }: MoneyInputProps) {
+function MoneyInput({ label, value, onChange, hint, autoFocus, placeholder }: MoneyInputProps) {
   const [focused, setFocused] = useState(false)
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
@@ -27,7 +28,8 @@ function MoneyInput({ label, value, onChange, hint, autoFocus }: MoneyInputProps
       }}>
         <input
           type="text"
-          value={fmtNum(value)}
+          value={value > 0 ? fmtNum(value) : ''}
+          placeholder={placeholder}
           autoFocus={autoFocus}
           onChange={(e) => onChange(parseNum(e.target.value))}
           onFocus={() => setFocused(true)}
@@ -141,9 +143,9 @@ export function InputCard({
     }}>
       <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.4fr', gap: 18 }}>
         <MoneyInput label="Giá vốn" value={costPrice} onChange={setCostPrice}
-          hint="Giá bạn nhập về / sản xuất" autoFocus />
+          hint="Giá bạn nhập về / sản xuất" autoFocus placeholder="VD: 200.000" />
         <MoneyInput label="Giá bán" value={sellPrice} onChange={setSellPrice}
-          hint="Giá niêm yết trên Shopee" />
+          hint="Giá niêm yết trên Shopee" placeholder="VD: 400.000" />
         <div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#6B6B66', marginBottom: 8 }}>
             Tên sản phẩm <span style={{ color: '#A8A89E', fontWeight: 400 }}>(để lưu lại sau)</span>

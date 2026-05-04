@@ -236,7 +236,7 @@ export function ResultCard({
       profit={profit} profitPct={profitPct}
       kind="live"
     >
-      {!smartAlertsLoading && (
+      {!smartAlertsLoading && costPrice > 0 && revenue > 0 && (
         <SmartAlerts
           result={{ revenue, feeTotal, profit, profitPct, costPrice }}
           fixedFees={fixedFees}
