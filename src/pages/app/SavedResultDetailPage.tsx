@@ -50,6 +50,12 @@ export function SavedResultDetailPage() {
   }
 
   const { hasFeature: canShare, loading: featureLoading } = useHasFeature('shopee_share_link')
+  // Phase 7 — re-check quyền current user (đổi từ M6.9.1 hardcode hasFeature=true).
+  // Khi admin downgrade quyền sau lúc user lưu, mở Saved Detail sẽ thấy LockedCard
+  // CTA Zalo thay vì content. Snapshot data vẫn lưu nguyên trong DB — admin bật
+  // lại quyền sẽ hiện đầy đủ. PublicShare giữ hardcode (route public, không có user).
+  const { hasFeature: canExpertInsight } = useHasFeature('shopee_expert_insight')
+  const { hasFeature: canSmartAlerts } = useHasFeature('shopee_smart_alerts')
 
   const fetchDetail = useCallback(async () => {
     if (!id) return
@@ -233,10 +239,12 @@ export function SavedResultDetailPage() {
         />
       </div>
 
-      {/* Smart alerts (snapshot) */}
+      {/* Smart alerts (snapshot) — Phase 7: re-check quyền current user
+          (đổi từ M6.9.1 hardcode true). Logic gate trong SmartAlerts component
+          tự render dòng Zalo CTA khi !hasFeature. */}
       {savedAlerts && savedAlerts.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <SmartAlerts hasFeature={true} presetAlerts={savedAlerts} />
+          <SmartAlerts hasFeature={canSmartAlerts} presetAlerts={savedAlerts} />
         </div>
       )}
 
@@ -288,11 +296,12 @@ export function SavedResultDetailPage() {
 
       {/* Expert Engine recommendation snapshot (M6.8). Đặt cuối — sau snapshot
           banner, trước footer meta. Pre-M6.8 không có field → return null.
-          M6.9.1: hasFeature={true} cho data đã save (giống SmartAlerts) — chủ
-          sở hữu xem snapshot của chính mình không bị gate. */}
+          Phase 7: re-check quyền current user (đổi từ M6.9.1 hardcode true).
+          Khi !canExpertInsight → render LockedCard CTA Zalo (logic gate trong
+          RecommendationCard component). */}
       {savedRecommendation && (
         <div style={{ marginBottom: 16 }}>
-          <RecommendationCard hasFeature={true} preset={savedRecommendation} />
+          <RecommendationCard hasFeature={canExpertInsight} preset={savedRecommendation} />
         </div>
       )}
 
