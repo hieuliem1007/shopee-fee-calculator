@@ -80,6 +80,7 @@ export function ResultCard({
   const { hasFeature: canExportImage, loading: exportImageLoading } = useHasFeature('shopee_export_image')
   const { hasFeature: canExportPdf, loading: exportPdfLoading } = useHasFeature('shopee_export_pdf')
   const { hasFeature: canSmartAlerts, loading: smartAlertsLoading } = useHasFeature('shopee_smart_alerts')
+  const { hasFeature: canExpertInsight } = useHasFeature('shopee_expert_insight')
 
   // Saved result tied to current inputs/fees; clear khi user thay đổi inputs hay fees
   // → tránh share một snapshot stale.
@@ -106,27 +107,31 @@ export function ResultCard({
     shopType: shopTypeLabel === 'Shop Mall' ? 'mall' : 'normal',
   }
 
-  // Snapshot SmartAlerts vào results.alerts để khi load saved/public view
-  // sẽ render đúng alerts tại thời điểm save (không phụ thuộc logic mới).
-  const smartAlerts = computeSmartAlerts(
-    { revenue, feeTotal, profit, profitPct, costPrice },
-    fixedFees, varFees,
-  )
+  // Phase 7 — snapshot integrity (Approach 1): user mất quyền lúc save → field = null →
+  // vĩnh viễn không có (kể cả admin bật lại quyền sau), giống logic phí.
+  // PublicShare/SavedDetail tự ẩn block khi field null nhờ guard `&&` có sẵn.
+  // Saved cũ (trước fix này) không bị ảnh hưởng — chỉ apply saved MỚI từ giờ.
+  const smartAlerts = canSmartAlerts
+    ? computeSmartAlerts(
+        { revenue, feeTotal, profit, profitPct, costPrice },
+        fixedFees, varFees,
+      )
+    : null
 
-  // Snapshot Recommendation vào results.recommendation (M6.8). Saved/Share
-  // render lại snapshot, không recompute để tránh drift theo dữ liệu mới.
   const fixedTotalForRec = fixedFees.reduce((s, f) => s + computeFee(f, revenue), 0)
   const varTotalForRec = varFees.reduce((s, f) => s + computeFee(f, revenue), 0)
   const shopTypeForRec: 'mall' | 'normal' = shopTypeLabel === 'Shop Mall' ? 'mall' : 'normal'
-  const recommendation = generateRecommendation({
-    costPrice, sellPrice: revenue,
-    fixedFees, varFees,
-    revenue, feeTotal,
-    fixedTotal: fixedTotalForRec, varTotal: varTotalForRec,
-    profit, profitPct,
-    shopType: shopTypeForRec,
-    productName, categoryLabel,
-  })
+  const recommendation = canExpertInsight
+    ? generateRecommendation({
+        costPrice, sellPrice: revenue,
+        fixedFees, varFees,
+        revenue, feeTotal,
+        fixedTotal: fixedTotalForRec, varTotal: varTotalForRec,
+        profit, profitPct,
+        shopType: shopTypeForRec,
+        productName, categoryLabel,
+      })
+    : null
 
   const results = { feeTotal, profit, profitPct, revenue, alerts: smartAlerts, recommendation }
 
