@@ -67,7 +67,24 @@ function formatRate(fee: ExportFee): string {
   return fmtVND(fee.rate)
 }
 
-function FeeRow({ fee }: { fee: ExportFee }) {
+// Đợt A.5 — format % theo style Việt Nam (dấu phẩy thay chấm), 2 chữ số.
+// Đồng bộ với fmtPct trong lib/utils.ts (Đợt A app dùng).
+function formatPctVN(n: number): string {
+  return n.toFixed(2).replace('.', ',') + '%'
+}
+
+function formatPctSignedVN(n: number): string {
+  return (n > 0 ? '+' : '') + n.toFixed(2).replace('.', ',') + '%'
+}
+
+function FeeRow({ fee, revenue }: { fee: ExportFee; revenue: number }) {
+  // Đợt A.5 — fee kind='flat': % gộp vào cột rate (Phương án 1) để cột amount
+  // căn phải đồng đều giữa fee flat và fee %. Vd: "Hạ tầng (3.000đ ~ 0,75%)" +
+  // amount "3.000đ" (chỉ số tiền). Fee kind='pct' giữ nguyên: "Voucher Xtra (6%)" +
+  // amount "24.000đ". Edge: revenue=0 → flat label chỉ "(3.000đ)" không hiện %.
+  const rateLabel = fee.kind === 'flat' && revenue > 0
+    ? `${formatRate(fee)} ~ ${formatPctVN((fee.amount / revenue) * 100)}`
+    : formatRate(fee)
   return (
     <div style={{
       display: 'flex', alignItems: 'baseline', gap: 12,
@@ -77,7 +94,7 @@ function FeeRow({ fee }: { fee: ExportFee }) {
         color: '#2C2C2A', flex: 1, minWidth: 0,
         whiteSpace: 'nowrap',
       }}>
-        {fee.name} <span style={{ color: '#888780', fontSize: 12 }}>({formatRate(fee)})</span>
+        {fee.name} <span style={{ color: '#888780', fontSize: 12 }}>({rateLabel})</span>
       </div>
       <div style={{
         ...NUMERIC_STYLE,
@@ -116,9 +133,13 @@ function SectionBar({ color }: { color: string }) {
   return <div style={{ width: 4, height: 16, background: color, borderRadius: 2, flexShrink: 0 }} />
 }
 
-function FlowRow({ label, value, color, sign, bold, size = 13 }: {
-  label: string; value: number; color?: string; sign?: '−' | '='; bold?: boolean; size?: number
+function FlowRow({ label, value, revenue, color, sign, bold, size = 13 }: {
+  label: string; value: number; revenue: number
+  color?: string; sign?: '−' | '='; bold?: boolean; size?: number
 }) {
+  // Đợt A.5 — thêm "(X,XX%)" sau giá trị (đồng bộ với CalcFlow trong app).
+  // revenue=0 → ẩn pct (defensive, không hiển thị NaN/Infinity).
+  const pctText = revenue > 0 ? `(${formatPctVN((value / revenue) * 100)})` : null
   return (
     <div style={{
       display: 'flex', alignItems: 'baseline', gap: 12,
@@ -139,6 +160,11 @@ function FlowRow({ label, value, color, sign, bold, size = 13 }: {
         minWidth: AMOUNT_COL_MIN_WIDTH, textAlign: 'right',
       }}>
         {fmtVND(value)}
+        {pctText && (
+          <span style={{
+            marginLeft: 6, fontSize: size - 2, fontWeight: 400, color: '#888780',
+          }}>{pctText}</span>
+        )}
       </div>
     </div>
   )
@@ -164,6 +190,11 @@ export function ExportTemplate(props: ExportTemplateProps) {
 
   const fixedPct = inputs.sellPrice > 0 ? (totalFixedFees / inputs.sellPrice * 100) : 0
   const varPct = inputs.sellPrice > 0 ? (totalVariableFees / inputs.sellPrice * 100) : 0
+
+  // Đợt A.5 — defensive cho edge case revenue=0 (ít khả năng vì user export
+  // sau khi đã có kết quả, nhưng vẫn handle để KHÔNG crash + KHÔNG hiển thị NaN).
+  const isEmpty = inputs.sellPrice <= 0 || inputs.costPrice <= 0
+  const costPricePctOfRevenue = inputs.sellPrice > 0 ? (inputs.costPrice / inputs.sellPrice) * 100 : 0
 
   // Tỷ lệ thực giống ProfitGauge — ngưỡng GAUGE_SEGMENTS, scale [-10, 30].
   const activeIndex = segmentForPct(results.profitPct)
@@ -282,16 +313,38 @@ export function ExportTemplate(props: ExportTemplateProps) {
         </div>
       </div>
 
-      {/* SECTION 4 — 4 KPI cards (2x2 đều width) */}
+      {/* SECTION 4 — 4 KPI cards (2x2 đều width)
+          Đợt A.5 — đồng bộ với UI live: subtitle % cho Doanh thu/Giá vốn/Tổng chi phí,
+          cột 4 đổi từ "% PHÍ/DT" thành "LỢI NHUẬN RÒNG %" (đỏ < 0, xanh > 0). */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10,
         margin: '0 28px 24px',
       }}>
         {[
-          { label: 'DOANH THU',          value: fmtVND(inputs.sellPrice) },
-          { label: 'GIÁ VỐN',            value: fmtVND(inputs.costPrice) },
-          { label: 'TỔNG CHI PHÍ',       value: fmtVND(results.totalCost) },
-          { label: '% PHÍ / DOANH THU',  value: `${results.costPct.toFixed(2)}%` },
+          {
+            label: 'DOANH THU',
+            value: fmtVND(inputs.sellPrice),
+            subtitle: isEmpty ? null : '100% gốc',
+            valueColor: '#2C2C2A',
+          },
+          {
+            label: 'GIÁ VỐN',
+            value: fmtVND(inputs.costPrice),
+            subtitle: isEmpty ? null : `${formatPctVN(costPricePctOfRevenue)} doanh thu`,
+            valueColor: '#2C2C2A',
+          },
+          {
+            label: 'TỔNG CHI PHÍ',
+            value: fmtVND(results.totalCost),
+            subtitle: isEmpty ? null : `${formatPctVN(results.costPct)} doanh thu`,
+            valueColor: '#2C2C2A',
+          },
+          {
+            label: 'LỢI NHUẬN RÒNG %',
+            value: isEmpty ? '—' : formatPctSignedVN(results.profitPct),
+            subtitle: isEmpty ? null : 'trên doanh thu',
+            valueColor: isEmpty ? '#2C2C2A' : (isProfit ? '#1D9E75' : '#A82928'),
+          },
         ].map((kpi, i) => (
           <div key={i} style={{
             background: '#F1EFE8', borderRadius: 8, padding: '14px 16px',
@@ -303,9 +356,16 @@ export function ExportTemplate(props: ExportTemplateProps) {
             }}>{kpi.label}</div>
             <div style={{
               ...NUMERIC_STYLE,
-              fontSize: 18, fontWeight: 500, color: '#2C2C2A',
+              fontSize: 18, fontWeight: 500, color: kpi.valueColor,
               whiteSpace: 'nowrap',
             }}>{kpi.value}</div>
+            {kpi.subtitle && (
+              <div style={{
+                ...NUMERIC_STYLE,
+                fontSize: 10, color: '#888780', marginTop: 4,
+                whiteSpace: 'nowrap', fontWeight: 400,
+              }}>{kpi.subtitle}</div>
+            )}
           </div>
         ))}
       </div>
@@ -336,7 +396,7 @@ export function ExportTemplate(props: ExportTemplateProps) {
             Không có phí cố định nào được bật.
           </div>
         ) : (
-          fixedFees.map(f => <FeeRow key={f.id} fee={f} />)
+          fixedFees.map(f => <FeeRow key={f.id} fee={f} revenue={inputs.sellPrice} />)
         )}
         <FeeTotalRow
           label={`TỔNG CỐ ĐỊNH (${fixedPct.toFixed(2)}% doanh thu)`}
@@ -371,7 +431,7 @@ export function ExportTemplate(props: ExportTemplateProps) {
             Không có phí biến đổi nào được bật.
           </div>
         ) : (
-          variableFees.map(f => <FeeRow key={f.id} fee={f} />)
+          variableFees.map(f => <FeeRow key={f.id} fee={f} revenue={inputs.sellPrice} />)
         )}
         <FeeTotalRow
           label={`TỔNG BIẾN ĐỔI (${varPct.toFixed(2)}% doanh thu)`}
@@ -393,16 +453,17 @@ export function ExportTemplate(props: ExportTemplateProps) {
             DÒNG TÍNH LỢI NHUẬN
           </div>
         </div>
-        <FlowRow label="Doanh thu" value={inputs.sellPrice} />
-        <FlowRow label="Giá vốn sản phẩm" value={inputs.costPrice} sign="−" />
+        <FlowRow label="Doanh thu" value={inputs.sellPrice} revenue={inputs.sellPrice} />
+        <FlowRow label="Giá vốn sản phẩm" value={inputs.costPrice} revenue={inputs.sellPrice} sign="−" />
         <div style={{ borderTop: '1px solid #EF9F27', marginTop: 4 }} />
-        <FlowRow label="Lãi gộp" value={grossProfit} color="#1D9E75" sign="=" bold />
-        <FlowRow label="Tổng phí cố định" value={totalFixedFees} sign="−" />
-        <FlowRow label="Tổng phí biến đổi" value={totalVariableFees} sign="−" />
+        <FlowRow label="Lãi gộp" value={grossProfit} revenue={inputs.sellPrice} color="#1D9E75" sign="=" bold />
+        <FlowRow label="Tổng phí cố định" value={totalFixedFees} revenue={inputs.sellPrice} sign="−" />
+        <FlowRow label="Tổng phí biến đổi" value={totalVariableFees} revenue={inputs.sellPrice} sign="−" />
         <div style={{ borderTop: '2px solid #EF9F27', marginTop: 6 }} />
         <FlowRow
           label="LỢI NHUẬN RÒNG"
           value={results.profit}
+          revenue={inputs.sellPrice}
           color={isProfit ? '#1D9E75' : '#A82928'}
           sign="="
           bold
