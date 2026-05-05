@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Users, Clock, DollarSign, Settings, LogOut, LayoutDashboard, Eye } from 'lucide-react'
+import { Users, Clock, DollarSign, Settings, LogOut, LayoutDashboard, Eye, Activity } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Footer } from '@/components/layout/Footer'
 
@@ -9,6 +9,7 @@ const NAV = [
   { path: '/admin/users', icon: Users, label: 'Tất cả user' },
   { path: '/admin/fees', icon: DollarSign, label: 'Cấu hình phí' },
   { path: '/admin/settings', icon: Settings, label: 'Cấu hình hệ thống' },
+  { path: '/admin/activity-log', icon: Activity, label: 'Hoạt động hệ thống' },
 ]
 
 export function AdminLayout() {

@@ -266,15 +266,23 @@ export function AdminOverviewPage() {
             <div style={{
               padding: '12px 18px', background: '#FAFAF7',
               borderBottom: '1px solid #EFEAE0',
-              display: 'flex', alignItems: 'center', gap: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
             }}>
-              <Activity size={13} color="#8A8A82" />
-              <span style={{
-                fontSize: 11, fontWeight: 600, color: '#8A8A82',
-                letterSpacing: '0.06em', textTransform: 'uppercase',
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Activity size={13} color="#8A8A82" />
+                <span style={{
+                  fontSize: 11, fontWeight: 600, color: '#8A8A82',
+                  letterSpacing: '0.06em', textTransform: 'uppercase',
+                }}>
+                  Hoạt động gần đây
+                </span>
+              </div>
+              <Link to="/admin/activity-log" style={{
+                fontSize: 12, fontWeight: 500, color: '#1A1A1A',
+                textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
               }}>
-                Hoạt động gần đây
-              </span>
+                Xem tất cả <ArrowRight size={12} />
+              </Link>
             </div>
 
             {data.recent_activity.length === 0 ? (
